@@ -57,6 +57,8 @@ static void *	FBDevWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, in
 				  CARD32 *size, void *closure);
 static void	FBDevPointerMoved(int index, int x, int y);
 static Bool	FBDevDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen);
+static Bool	FBDevDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+				pointer ptr);
 
 
 enum { FBDEV_ROTATE_NONE=0, FBDEV_ROTATE_CW=270, FBDEV_ROTATE_UD=180, FBDEV_ROTATE_CCW=90 };
@@ -91,7 +93,8 @@ DriverRec FBDEV = {
 	FBDevProbe,
 	FBDevAvailableOptions,
 	NULL,
-	0
+	0,
+	FBDevDriverFunc
 };
 
 /* Supported "chipsets" */
@@ -208,7 +211,7 @@ FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
 	if (!setupDone) {
 		setupDone = TRUE;
-		xf86AddDriver(&FBDEV, module, 0);
+		xf86AddDriver(&FBDEV, module, HaveDriverFuncs);
 		LoaderRefSymLists(afbSymbols, fbSymbols,
 				  shadowSymbols, fbdevHWSymbols, NULL);
 		return (pointer)1;
@@ -1099,4 +1102,19 @@ FBDevDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 
     return (DGAInit(pScreen, &FBDevDGAFunctions,
 	    fPtr->pDGAMode, fPtr->nDGAMode));
+}
+
+static Bool
+FBDevDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
+{
+    xorgHWFlags *flag;
+    
+    switch (op) {
+	case GET_REQUIRED_HW_INTERFACES:
+	    flag = (CARD32*)ptr;
+	    (*flag) = 0;
+	    return TRUE;
+	default:
+	    return FALSE;
+    }
 }
