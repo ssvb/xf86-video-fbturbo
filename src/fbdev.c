@@ -359,7 +359,6 @@ FBDevProbe(DriverPtr drv, int flags)
 		    pScrn->EnterVT       = fbdevHWEnterVTWeak();
 		    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
 		    pScrn->ValidMode     = fbdevHWValidModeWeak();
-		    fbdevHWFillInScreenInfo(pScrn);
 		    
 		    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			       "using %s\n", dev ? dev : "default device");
