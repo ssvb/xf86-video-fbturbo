@@ -2,7 +2,7 @@
 
 /*
  * Authors:  Alan Hourihane, <alanh@fairlite.demon.co.uk>
- *	     Michel Dänzer, <michdaen@iiic.ethz.ch>
+ *	     Michel DÃ¤nzer, <michdaen@iiic.ethz.ch>
  */
 
 /* all driver need this */
