@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/fbdev/fbdev.c,v 1.44 2003/09/24 02:43:21 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/fbdev/fbdev.c,v 1.43 2003/04/23 21:51:35 tsi Exp $ */
 
 /*
  * Authors:  Alan Hourihane, <alanh@fairlite.demon.co.uk>
@@ -186,7 +186,7 @@ static XF86ModuleVersionInfo FBDevVersRec =
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
-	XORG_VERSION_CURRENT,
+	XF86_VERSION_CURRENT,
 	FBDEV_MAJOR_VERSION, FBDEV_MINOR_VERSION, 0,
 	ABI_CLASS_VIDEODRV,
 	ABI_VIDEODRV_VERSION,
@@ -377,7 +377,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	int default_depth, fbbpp;
 	const char *mod = NULL, *s;
 	const char **syms = NULL;
-	int type;
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -409,8 +408,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"fbdev")))
 		return FALSE;
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
-	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
-			     Support24bppFb | Support32bppFb | SupportConvert32to24 | PreferConvert32to24))
+	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,0))
 		return FALSE;
 	xf86PrintDepthBpp(pScrn);
 
@@ -534,7 +532,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	xf86SetDpi(pScrn, 0, 0);
 
 	/* Load bpp-specific modules */
-	switch ((type = fbdevHWGetType(pScrn)))
+	switch (fbdevHWGetType(pScrn))
 	{
 	case FBDEVHW_PLANES:
 		mod = "afb";
@@ -575,7 +573,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
                return FALSE;
        default:
                xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-               "Fbdev type (%d) not supported yet.", type);
+               "Fbdev type (%d) not supported yet.");
                return FALSE;
 	}
 	if (mod && xf86LoadSubModule(pScrn, mod) == NULL) {
@@ -608,7 +606,6 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	VisualPtr visual;
 	int init_picture = 0;
 	int ret,flags,width,height;
-	int type;
 
 	TRACE_ENTER("FBDevScreenInit");
 
@@ -686,7 +683,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		fPtr->fbstart   = fPtr->fbmem + fPtr->fboff;
 	}
 
-	switch ((type = fbdevHWGetType(pScrn)))
+	switch (fbdevHWGetType(pScrn))
 	{
 #ifdef USE_AFB
 	case FBDEVHW_PLANES:
@@ -753,7 +750,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	default:
 		xf86DrvMsg(scrnIndex, X_ERROR,
 		"Internal error: fbdev type (%d) unsupported in"
-		" FBDevScreenInit\n", type);
+		" FBDevScreenInit\n");
 		ret = FALSE;
 		break;
 	}
@@ -793,8 +790,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  FBDevDGAInit(pScrn, pScreen);
 	else {
 	  xf86DrvMsg(scrnIndex, X_INFO, "Rotated display, disabling DGA\n");
-	  xf86DrvMsg(scrnIndex, X_INFO, "Enabling Driver rotation, disabling RandR\n");
-	  xf86DisableRandR();
+
 	  if (pScrn->bitsPerPixel == 24)
 	    xf86DrvMsg(scrnIndex, X_WARNING, "Rotation might be broken in 24 bpp\n");
 	}
@@ -807,7 +803,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	miDCInitialize(pScreen, xf86GetPointerScreenFuncs());
 
 	/* colormap */
-	switch ((type = fbdevHWGetType(pScrn)))
+	switch (fbdevHWGetType(pScrn))
 	{
 	/* XXX It would be simpler to use miCreateDefColormap() in all cases. */
 #ifdef USE_AFB
@@ -837,8 +833,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		return FALSE;
 	default:
 		xf86DrvMsg(scrnIndex, X_ERROR,
-		"Internal error: invalid fbdev type (%d) in FBDevScreenInit\n",
-		type);
+		"Internal error: invalid fbdev type (%d) in FBDevScreenInit\n");
 		return FALSE;
 	}
 	flags = CMAP_PALETTED_TRUECOLOR;
