@@ -137,7 +137,9 @@ static const char *shadowSymbols[] = {
 	"shadowInit",
 	"shadowSetup",
 	"shadowUpdatePacked",
+	"shadowUpdatePackedWeak",
 	"shadowUpdateRotatePacked",
+	"shadowUpdateRotatePackedWeak",
 	NULL
 };
 
@@ -158,7 +160,8 @@ static const char *fbdevHWSymbols[] = {
 	"fbdevHWUnmapVidmem",
 
 	/* colormap */
-	"fbdevHWLoadpalette",
+	"fbdevHWLoadPalette",
+	"fbdevHWLoadPaletteWeak",
 
 	/* ScrnInfo hooks */
 	"fbdevHWAdjustFrameWeak",
@@ -168,10 +171,12 @@ static const char *fbdevHWSymbols[] = {
 	"fbdevHWRestore",
 	"fbdevHWSave",
 	"fbdevHWSaveScreen",
+	"fbdevHWSaveScreenWeak",
 	"fbdevHWSwitchModeWeak",
 	"fbdevHWValidModeWeak",
 
 	"fbdevHWDPMSSet",
+	"fbdevHWDPMSSetWeak",
 
 	NULL
 };
