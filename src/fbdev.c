@@ -840,14 +840,13 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		return FALSE;
 	}
 	flags = CMAP_PALETTED_TRUECOLOR;
-	if(!xf86HandleColormaps(pScreen, 256, 8,
-	                        LoaderSymbol("fbdevHWLoadPalette"), 
+	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevHWLoadPaletteWeak(), 
 				NULL, flags))
 		return FALSE;
 
-	xf86DPMSInit(pScreen, LoaderSymbol("fbdevHWDPMSSet"), 0);
+	xf86DPMSInit(pScreen, fbdevHWDPMSSetWeak(), 0);
 
-	pScreen->SaveScreen = LoaderSymbol("fbdevHWSaveScreen");
+	pScreen->SaveScreen = fbdevHWSaveScreenWeak();
 
 	/* Wrap the current CloseScreen function */
 	fPtr->CloseScreen = pScreen->CloseScreen;
