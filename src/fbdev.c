@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/fbdev/fbdev.c,v 1.44 2003/09/24 02:43:21 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/fbdev/fbdev.c,v 1.45 2004/01/11 18:42:59 dawes Exp $ */
 
 /*
  * Authors:  Alan Hourihane, <alanh@fairlite.demon.co.uk>
@@ -409,7 +409,8 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"fbdev")))
 		return FALSE;
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
-	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,0))
+	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
+			     Support24bppFb | Support32bppFb | SupportConvert32to24 | PreferConvert32to24))
 		return FALSE;
 	xf86PrintDepthBpp(pScrn);
 
@@ -792,7 +793,8 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  FBDevDGAInit(pScrn, pScreen);
 	else {
 	  xf86DrvMsg(scrnIndex, X_INFO, "Rotated display, disabling DGA\n");
-
+	  xf86DrvMsg(scrnIndex, X_INFO, "Enabling Driver rotation, disabling RandR\n");
+	  xf86DisableRandR();
 	  if (pScrn->bitsPerPixel == 24)
 	    xf86DrvMsg(scrnIndex, X_WARNING, "Rotation might be broken in 24 bpp\n");
 	}
