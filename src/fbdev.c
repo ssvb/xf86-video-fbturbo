@@ -782,8 +782,8 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	if (fPtr->shadowFB && 
 	    (!shadowSetup(pScreen) || !shadowAdd(pScreen, NULL,
-	      fPtr->rotate ? LoaderSymbol("shadowUpdateRotatePacked")
-	                   : LoaderSymbol("shadowUpdatePacked"),
+	      fPtr->rotate ? shadowUpdateRotatePackedWeak()
+	                   : shadowUpdatePackedWeak(),
 	      FBDevWindowLinear, fPtr->rotate, NULL)) ) {
 	    xf86DrvMsg(scrnIndex, X_ERROR,
 		       "Shadow framebuffer initialization failed.\n");
