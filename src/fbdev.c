@@ -161,16 +161,15 @@ static const char *fbdevHWSymbols[] = {
 	"fbdevHWLoadpalette",
 
 	/* ScrnInfo hooks */
-	"fbdevHWAdjustFrame",
-	"fbdevHWEnterVT",
-	"fbdevHWLeaveVT",
+	"fbdevHWAdjustFrameWeak",
+	"fbdevHWEnterVTWeak",
+	"fbdevHWLeaveVTWeak",
 	"fbdevHWModeInit",
 	"fbdevHWRestore",
 	"fbdevHWSave",
 	"fbdevHWSaveScreen",
-	"fbdevHWSwitchMode",
-	"fbdevHWValidMode",
-	"fbdevHWFillInScreenInfo",
+	"fbdevHWSwitchModeWeak",
+	"fbdevHWValidModeWeak",
 
 	"fbdevHWDPMSSet",
 
@@ -355,6 +354,11 @@ FBDevProbe(DriverPtr drv, int flags)
 		    pScrn->Probe         = FBDevProbe;
 		    pScrn->PreInit       = FBDevPreInit;
 		    pScrn->ScreenInit    = FBDevScreenInit;
+		    pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
+		    pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
+		    pScrn->EnterVT       = fbdevHWEnterVTWeak();
+		    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
+		    pScrn->ValidMode     = fbdevHWValidModeWeak();
 		    fbdevHWFillInScreenInfo(pScrn);
 		    
 		    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
