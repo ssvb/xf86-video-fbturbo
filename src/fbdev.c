@@ -83,7 +83,7 @@ static int pix24bpp = 0;
 #define FBDEV_MAJOR_VERSION	0
 #define FBDEV_MINOR_VERSION	1
 
-DriverRec FBDEV = {
+_X_EXPORT DriverRec FBDEV = {
 	VERSION,
 	FBDEV_DRIVER_NAME,
 #if 0
@@ -202,7 +202,7 @@ static XF86ModuleVersionInfo FBDevVersRec =
 	{0,0,0,0}
 };
 
-XF86ModuleData fbdevModuleData = { &FBDevVersRec, FBDevSetup, NULL };
+_X_EXPORT XF86ModuleData fbdevModuleData = { &FBDevVersRec, FBDevSetup, NULL };
 
 pointer
 FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
