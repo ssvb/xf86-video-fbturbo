@@ -5,6 +5,10 @@
  *	     Michel Dänzer, <michdaen@iiic.ethz.ch>
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /* all driver need this */
 #include "xf86.h"
 #include "xf86_OSproc.h"
