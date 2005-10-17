@@ -1,22 +1,59 @@
-#  Copyright 2005 Adam Jackson.
+# $Id$
 #
-#  Permission is hereby granted, free of charge, to any person obtaining a
-#  copy of this software and associated documentation files (the "Software"),
-#  to deal in the Software without restriction, including without limitation
-#  on the rights to use, copy, modify, merge, publish, distribute, sub
-#  license, and/or sell copies of the Software, and to permit persons to whom
-#  the Software is furnished to do so, subject to the following conditions:
-#
-#  The above copyright notice and this permission notice (including the next
-#  paragraph) shall be included in all copies or substantial portions of the
-#  Software.
-#
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.  IN NO EVENT SHALL
-#  ADAM JACKSON BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-#  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-#  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+# 
+# Permission to use, copy, modify, distribute, and sell this software and its
+# documentation for any purpose is hereby granted without fee, provided that
+# the above copyright notice appear in all copies and that both that
+# copyright notice and this permission notice appear in supporting
+# documentation.
+# 
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE OPEN GROUP BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+# 
+# Except as contained in this notice, the name of the copyright holders shall
+# not be used in advertising or otherwise to promote the sale, use or
+# other dealings in this Software without prior written authorization
+# from the copyright holders.
+# 
 
-dist_man_MANS = \
-         fbdev.4
+drivermandir = $(mandir)/man$(DRIVER_MAN_SUFFIX)
+
+driverman_SOURCES = @DRIVER_NAME@.man
+
+driverman_DATA = $(driverman_SOURCES:man=$(DRIVER_MAN_SUFFIX))
+
+EXTRA_DIST = $(driverman_SOURCES)
+
+CLEANFILES = $(driverman_DATA)
+
+SED = sed
+
+# Strings to replace in man pages
+XORGRELSTRING = @PACKAGE_STRING@
+  XORGMANNAME = X Version 11
+
+MAN_SUBSTS = \
+	-e 's|__vendorversion__|"$(XORGRELSTRING)" "$(XORGMANNAME)"|' \
+	-e 's|__xorgversion__|"$(XORGRELSTRING)" "$(XORGMANNAME)"|' \
+	-e 's|__xservername__|Xorg|g' \
+	-e 's|__xconfigfile__|xorg.conf|g' \
+	-e 's|__projectroot__|$(prefix)|g' \
+	-e 's|__appmansuffix__|$(APP_MAN_SUFFIX)|g' \
+	-e 's|__drivermansuffix__|$(DRIVER_MAN_SUFFIX)|g' \
+	-e 's|__adminmansuffix__|$(ADMIN_MAN_SUFFIX)|g' \
+	-e 's|__miscmansuffix__|$(MISC_MAN_SUFFIX)|g' \
+	-e 's|__filemansuffix__|$(FILE_MAN_SUFFIX)|g'
+
+SUFFIXES = .$(DRIVER_MAN_SUFFIX) .man
+
+.man.$(DRIVER_MAN_SUFFIX):
+	sed $(MAN_SUBSTS) < $< > $@
