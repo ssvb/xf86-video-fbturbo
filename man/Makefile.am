@@ -25,7 +25,7 @@
 # from the copyright holders.
 # 
 
-drivermandir = $(mandir)/man$(DRIVER_MAN_SUFFIX)
+drivermandir = $(DRIVER_MAN_DIR)
 
 driverman_SOURCES = @DRIVER_NAME@.man
 
