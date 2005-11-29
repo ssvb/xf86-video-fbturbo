@@ -1,3 +1,8 @@
+2005-11-29  Adam Jackson  <ajax@freedesktop.org>
+
+	* configure.ac:
+	Only build dlloader modules by default.
+
 2005-11-09  Kevin E. Martin  <kem-at-freedesktop-dot-org>
 
 	* configure.ac:
