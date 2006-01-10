@@ -1,3 +1,9 @@
+2006-01-09  David Nusinow  <gravity-at-freedesktop-dot-org>
+
+	* man/fbdev.man:
+	Convert manpage to utf-8
+	Bugzilla #1925 <https://bugs.freedesktop.org/show_bug.cgi?id=1925>
+
 2005-12-20  Kevin E. Martin  <kem-at-freedesktop-dot-org>
 
 	* configure.ac:
