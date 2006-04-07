@@ -9,10 +9,11 @@
 #include "config.h"
 #endif
 
+#include <string.h>
+
 /* all driver need this */
 #include "xf86.h"
 #include "xf86_OSproc.h"
-#include "xf86_ansic.h"
 
 #include "mipointer.h"
 #include "mibstore.h"
@@ -81,14 +82,14 @@ enum { FBDEV_ROTATE_NONE=0, FBDEV_ROTATE_CW=270, FBDEV_ROTATE_UD=180, FBDEV_ROTA
  */
 static int pix24bpp = 0;
 
-#define VERSION			4000
+#define FBDEV_VERSION		4000
 #define FBDEV_NAME		"FBDEV"
 #define FBDEV_DRIVER_NAME	"fbdev"
 #define FBDEV_MAJOR_VERSION	0
-#define FBDEV_MINOR_VERSION	1
+#define FBDEV_MINOR_VERSION	2
 
 _X_EXPORT DriverRec FBDEV = {
-	VERSION,
+	FBDEV_VERSION,
 	FBDEV_DRIVER_NAME,
 #if 0
 	"driver for linux framebuffer devices",
@@ -360,7 +361,7 @@ FBDevProbe(DriverPtr drv, int flags)
 		if (pScrn) {
 		    foundScreen = TRUE;
 		    
-		    pScrn->driverVersion = VERSION;
+		    pScrn->driverVersion = FBDEV_VERSION;
 		    pScrn->driverName    = FBDEV_DRIVER_NAME;
 		    pScrn->name          = FBDEV_NAME;
 		    pScrn->Probe         = FBDevProbe;

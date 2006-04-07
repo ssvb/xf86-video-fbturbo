@@ -1,3 +1,9 @@
+2006-04-06  Adam Jackson  <ajax@freedesktop.org>
+
+	* configure.ac:
+	* src/fbdev.c:
+	Unlibcwrap.  Bump server version requirement.  Bump to 0.2.0.
+
 2006-01-09  David Nusinow  <gravity-at-freedesktop-dot-org>
 
 	* man/fbdev.man:
