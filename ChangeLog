@@ -1,3 +1,12 @@
+2006-05-18  Kevin E. Martin  <kem-at-freedesktop-dot-org>
+
+	* src/fbdev.c: (FBDevShadowInit), (FBDevScreenInit),
+	(FBDevCloseScreen):
+	Fix ShadowFB support to work with recent miext/shadow changes from
+	bug #5460 (Kevin Martin), and apply fix for miext/shadow crasher
+	https://bugs.freedesktop.org/show_bug.cgi?id=6940 (Kristian
+	Hoegsberg).
+
 2006-04-06  Adam Jackson  <ajax@freedesktop.org>
 
 	* configure.ac:

@@ -141,7 +141,6 @@ static const char *fbSymbols[] = {
 
 static const char *shadowSymbols[] = {
 	"shadowAdd",
-	"shadowAlloc",
 	"shadowInit",
 	"shadowSetup",
 	"shadowUpdatePacked",
@@ -236,7 +235,6 @@ typedef struct {
 	unsigned char*			fbmem;
 	int				fboff;
 	int				lineLength;
-	unsigned char*			shadowmem;
 	int				rotate;
 	Bool				shadowFB;
 	CloseScreenProcPtr		CloseScreen;
@@ -617,6 +615,36 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 }
 
 static Bool
+FBDevShadowInit(ScreenPtr pScreen, FBDevPtr fPtr)
+{
+    PixmapPtr pPixmap;
+    ShadowUpdateProc update;
+    ShadowWindowProc window;
+    
+    pPixmap = pScreen->CreatePixmap(pScreen, pScreen->width, pScreen->height,
+				    pScreen->rootDepth);
+    if (!pPixmap)
+	return FALSE;
+    
+    if (!shadowSetup(pScreen)) {
+	pScreen->DestroyPixmap(pPixmap);
+	return FALSE;
+    }
+
+    update = fPtr->rotate ? shadowUpdateRotatePackedWeak()
+	: shadowUpdatePackedWeak();
+
+    if (!shadowAdd(pScreen, pPixmap, update, FBDevWindowLinear,
+		   fPtr->rotate, NULL)) {
+	pScreen->DestroyPixmap(pPixmap);
+	return FALSE;
+    } else {
+	return TRUE;
+    }	    
+}
+
+
+static Bool
 FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 {
 	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
@@ -692,20 +720,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		pScrn->PointerMoved = FBDevPointerMoved;
 	}
 
-	/* shadowfb */
-	if (fPtr->shadowFB) {
-		if ((fPtr->shadowmem = shadowAlloc(width, height,
-						   pScrn->bitsPerPixel)) == NULL) {
-		xf86DrvMsg(scrnIndex,X_ERROR,
-			   "allocation of shadow framebuffer memory failed\n");
-		return FALSE;
-	}
-
-		fPtr->fbstart   = fPtr->shadowmem;
-	} else {
-		fPtr->shadowmem = NULL;
-		fPtr->fbstart   = fPtr->fbmem + fPtr->fboff;
-	}
+	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
 
 	switch ((type = fbdevHWGetType(pScrn)))
 	{
@@ -803,11 +818,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
 
-	if (fPtr->shadowFB && 
-	    (!shadowSetup(pScreen) || !shadowAdd(pScreen, NULL,
-	      fPtr->rotate ? shadowUpdateRotatePackedWeak()
-	                   : shadowUpdatePackedWeak(),
-	      FBDevWindowLinear, fPtr->rotate, NULL)) ) {
+	if (fPtr->shadowFB && !FBDevShadowInit(pScreen, fPtr)) {
 	    xf86DrvMsg(scrnIndex, X_ERROR,
 		       "shadow framebuffer initialization failed\n");
 	    return FALSE;
@@ -910,8 +921,6 @@ FBDevCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	
 	fbdevHWRestore(pScrn);
 	fbdevHWUnmapVidmem(pScrn);
-	if (fPtr->shadowmem)
-		xfree(fPtr->shadowmem);
 	if (fPtr->pDGAMode) {
 	  xfree(fPtr->pDGAMode);
 	  fPtr->pDGAMode = NULL;
