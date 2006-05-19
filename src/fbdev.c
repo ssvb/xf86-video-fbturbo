@@ -86,7 +86,7 @@ static int pix24bpp = 0;
 #define FBDEV_NAME		"FBDEV"
 #define FBDEV_DRIVER_NAME	"fbdev"
 #define FBDEV_MAJOR_VERSION	0
-#define FBDEV_MINOR_VERSION	2
+#define FBDEV_MINOR_VERSION	3
 
 _X_EXPORT DriverRec FBDEV = {
 	FBDEV_VERSION,

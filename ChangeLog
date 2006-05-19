@@ -1,3 +1,9 @@
+2006-05-19  Adam Jackson  <ajax@freedesktop.org>
+
+	* configure.ac:
+	* src/fbdev.c:
+	Bump to 0.3.0
+
 2006-05-18  Kevin E. Martin  <kem-at-freedesktop-dot-org>
 
 	* src/fbdev.c: (FBDevShadowInit), (FBDevScreenInit),
