@@ -1,5 +1,3 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/fbdev/fbdev.c,v 1.44 2003/09/24 02:43:21 dawes Exp $ */
-
 /*
  * Authors:  Alan Hourihane, <alanh@fairlite.demon.co.uk>
  *	     Michel Dänzer, <michdaen@iiic.ethz.ch>
@@ -36,17 +34,14 @@
 
 #include "xf86xv.h"
 
-#define DEBUG 0
+static Bool debug = 0;
 
-#if DEBUG
-# define TRACE_ENTER(str)       ErrorF("fbdev: " str " %d\n",pScrn->scrnIndex)
-# define TRACE_EXIT(str)        ErrorF("fbdev: " str " done\n")
-# define TRACE(str)             ErrorF("fbdev trace: " str "\n")
-#else
-# define TRACE_ENTER(str)
-# define TRACE_EXIT(str)
-# define TRACE(str)
-#endif
+#define TRACE_ENTER(str) \
+    do { if (debug) ErrorF("fbdev: " str " %d\n",pScrn->scrnIndex); } while (0)
+#define TRACE_EXIT(str) \
+    do { if (debug) ErrorF("fbdev: " str " done\n"); } while (0)
+#define TRACE(str) \
+    do { if (debug) ErrorF("fbdev trace: " str "\n"); } while (0)
 
 /* -------------------------------------------------------------------- */
 /* prototypes                                                           */
@@ -115,13 +110,15 @@ static SymTabRec FBDevChipsets[] = {
 typedef enum {
 	OPTION_SHADOW_FB,
 	OPTION_ROTATE,
-	OPTION_FBDEV
+	OPTION_FBDEV,
+	OPTION_DEBUG
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_SHADOW_FB,	"ShadowFB",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_ROTATE,	"Rotate",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_FBDEV,		"fbdev",	OPTV_STRING,	{0},	FALSE },
+	{ OPTION_DEBUG,		"debug",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -473,6 +470,8 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 
 	/* use shadow framebuffer by default */
 	fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options, OPTION_SHADOW_FB, TRUE);
+
+	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
 
 	/* rotation */
 	fPtr->rotate = FBDEV_ROTATE_NONE;
