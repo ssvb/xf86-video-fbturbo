@@ -1,6 +1,6 @@
 /*
  * Authors:  Alan Hourihane, <alanh@fairlite.demon.co.uk>
- *	     Michel Dänzer, <michdaen@iiic.ethz.ch>
+ *	     Michel Dänzer, <michel@tungstengraphics.com>
  */
 
 #ifdef HAVE_CONFIG_H
