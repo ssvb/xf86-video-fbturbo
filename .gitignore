@@ -1,5 +1,8 @@
+.deps
+.libs
 Makefile
 Makefile.in
+*~
 *.la
 *.lo
 aclocal.m4
@@ -12,6 +15,7 @@ config.status
 config.sub
 configure
 depcomp
+fbdev.4
 install-sh
 libtool
 ltmain.sh
