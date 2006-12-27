@@ -790,7 +790,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	default:
 		xf86DrvMsg(scrnIndex, X_ERROR,
 		           "internal error: unrecognised hardware type (%d) "
-			   "encountered in FBDevScreenInit()\n");
+			   "encountered in FBDevScreenInit()\n", type);
 		ret = FALSE;
 		break;
 	}
