@@ -415,7 +415,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		return FALSE;
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
-			     Support24bppFb | Support32bppFb | SupportConvert32to24 | PreferConvert32to24))
+			     Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
 	xf86PrintDepthBpp(pScrn);
 
