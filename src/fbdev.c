@@ -523,15 +523,8 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		fbdevHWUseBuildinMode(pScrn);
 	pScrn->currentMode = pScrn->modes;
 
-	if (fPtr->shadowFB)
-		pScrn->displayWidth = pScrn->virtualX;	/* ShadowFB handles this correctly */
-	else {
-		int fbbpp;
-		/* FIXME: this doesn't work for all cases, e.g. when each scanline
-			has a padding which is independent from the depth (controlfb) */
-		fbdevHWGetDepth(pScrn,&fbbpp);
-		pScrn->displayWidth = fbdevHWGetLineLength(pScrn)/(fbbpp >> 3);
-	}
+	/* First approximation, may be refined in ScreenInit */
+	pScrn->displayWidth = pScrn->virtualX;
 
 	xf86PrintModes(pScrn);
 
@@ -719,6 +712,17 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  int tmp = pScrn->virtualX;
 	  pScrn->virtualX = pScrn->displayWidth = pScrn->virtualY;
 	  pScrn->virtualY = tmp;
+	} else if (!fPtr->shadowFB) {
+		/* FIXME: this doesn't work for all cases, e.g. when each scanline
+			has a padding which is independent from the depth (controlfb) */
+		pScrn->displayWidth = fbdevHWGetLineLength(pScrn) /
+				      (pScrn->bitsPerPixel / 8);
+
+		if (pScrn->displayWidth != pScrn->virtualX) {
+			xf86DrvMsg(scrnIndex, X_INFO,
+				   "Pitch updated to %d after ModeInit\n",
+				   pScrn->displayWidth);
+		}
 	}
 
 	if(fPtr->rotate && !fPtr->PointerMoved) {
