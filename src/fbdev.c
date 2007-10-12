@@ -34,7 +34,7 @@
 
 #include "xf86xv.h"
 
-#ifdef PCIACCESS
+#ifdef XSERVER_LIBPCIACCESS
 #include <pciaccess.h>
 #endif
 
@@ -53,7 +53,7 @@ static Bool debug = 0;
 static const OptionInfoRec * FBDevAvailableOptions(int chipid, int busid);
 static void	FBDevIdentify(int flags);
 static Bool	FBDevProbe(DriverPtr drv, int flags);
-#ifdef PCIACCESS
+#ifdef XSERVER_LIBPCIACCESS
 static Bool	FBDevPciProbe(DriverPtr drv, int entity_num,
      struct pci_device *dev, intptr_t match_data);
 #endif
@@ -84,7 +84,7 @@ static int pix24bpp = 0;
 #define FBDEV_NAME		"FBDEV"
 #define FBDEV_DRIVER_NAME	"fbdev"
 
-#ifdef PCIACCESS
+#ifdef XSERVER_LIBPCIACCESS
 static const struct pci_id_match fbdev_device_match[] = {
     {
 	PCI_MATCH_ANY, PCI_MATCH_ANY, PCI_MATCH_ANY, PCI_MATCH_ANY,
@@ -108,7 +108,7 @@ _X_EXPORT DriverRec FBDEV = {
 	0,
 	FBDevDriverFunc,
 
-#ifdef PCIACCESS
+#ifdef XSERVER_LIBPCIACCESS
     fbdev_device_match,
     FBDevPciProbe
 #endif
@@ -298,7 +298,7 @@ FBDevIdentify(int flags)
 }
 
 
-#ifdef PCIACCESS
+#ifdef XSERVER_LIBPCIACCESS
 static Bool FBDevPciProbe(DriverPtr drv, int entity_num,
 			  struct pci_device *dev, intptr_t match_data)
 {
@@ -373,13 +373,13 @@ FBDevProbe(DriverPtr drv, int flags)
 	
 	for (i = 0; i < numDevSections; i++) {
 	    Bool isIsa = FALSE;
-#ifndef PCIACCESS
+#ifndef XSERVER_LIBPCIACCESS
 	    Bool isPci = FALSE;
 #endif
 
 	    dev = xf86FindOptionValue(devSections[i]->options,"fbdev");
 	    if (devSections[i]->busID) {
-#ifndef PCIACCESS
+#ifndef XSERVER_LIBPCIACCESS
 	        if (xf86ParsePciBusString(devSections[i]->busID,&bus,&device,
 					  &func)) {
 		    if (!xf86CheckPciSlot(bus,device,func))
@@ -393,7 +393,7 @@ FBDevProbe(DriverPtr drv, int flags)
 	    }
 	    if (fbdevHWProbe(NULL,dev,NULL)) {
 		pScrn = NULL;
-#ifndef PCIACCESS
+#ifndef XSERVER_LIBPCIACCESS
 		if (isPci) {
 		    /* XXX what about when there's no busID set? */
 		    int entity;
