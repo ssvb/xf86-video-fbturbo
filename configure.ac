@@ -59,6 +59,14 @@ XORG_DRIVER_CHECK_EXT(XV, videoproto)
 PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901 xproto fontsproto $REQUIRED_MODULES])
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
+save_CFLAGS="$CFLAGS"
+CFLAGS="$XORG_CFLAGS"
+AC_CHECK_DECL(xf86ConfigIsaEntity,
+	      [AC_DEFINE(HAVE_ISA, 1, [Have ISA support])],
+	      [],
+	      [#include "xf86.h"])
+CFLAGS="$save_CFLAGS"
+
 AM_CONDITIONAL(PCIACCESS, [test "x$PCIACCESS" = xyes])
 if test "x$PCIACCESS" = xyes; then
     AC_DEFINE(PCIACCESS, 1, [Use libpciaccess])
