@@ -57,7 +57,7 @@ Enable rotation of the display. The supported values are "CW" (clockwise,
 90 degrees), "UD" (upside down, 180 degrees) and "CCW" (counter clockwise,
 270 degrees). Implies use of the shadow framebuffer layer.   Default: off.
 .SH "SEE ALSO"
-__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__),
+__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),
 X(__miscmansuffix__), fbdevhw(__drivermansuffix__)
 .SH AUTHORS
 Authors include: Gerd Knorr, Michel D\(:anzer, Geert Uytterhoeven
