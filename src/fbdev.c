@@ -1239,6 +1239,7 @@ FBDevDGAAddModes(ScrnInfoPtr pScrn)
 static Bool
 FBDevDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 {
+#ifdef XFreeXDGA
     FBDevPtr fPtr = FBDEVPTR(pScrn);
 
     if (pScrn->depth < 8)
@@ -1249,6 +1250,9 @@ FBDevDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 
     return (DGAInit(pScreen, &FBDevDGAFunctions,
 	    fPtr->pDGAMode, fPtr->nDGAMode));
+#else
+    return TRUE;
+#endif
 }
 
 static Bool
