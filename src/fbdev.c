@@ -141,67 +141,6 @@ static const OptionInfoRec FBDevOptions[] = {
 
 /* -------------------------------------------------------------------- */
 
-static const char *afbSymbols[] = {
-	"afbScreenInit",
-	"afbCreateDefColormap",
-	NULL
-};
-
-static const char *fbSymbols[] = {
-	"fbScreenInit",
-	"fbPictureInit",
-	NULL
-};
-
-static const char *shadowSymbols[] = {
-	"shadowAdd",
-	"shadowInit",
-	"shadowSetup",
-	"shadowUpdatePacked",
-	"shadowUpdatePackedWeak",
-	"shadowUpdateRotatePacked",
-	"shadowUpdateRotatePackedWeak",
-	NULL
-};
-
-static const char *fbdevHWSymbols[] = {
-	"fbdevHWInit",
-	"fbdevHWProbe",
-	"fbdevHWSetVideoModes",
-	"fbdevHWUseBuildinMode",
-
-	"fbdevHWGetDepth",
-	"fbdevHWGetLineLength",
-	"fbdevHWGetName",
-	"fbdevHWGetType",
-	"fbdevHWGetVidmem",
-	"fbdevHWLinearOffset",
-	"fbdevHWLoadPalette",
-	"fbdevHWMapVidmem",
-	"fbdevHWUnmapVidmem",
-
-	/* colormap */
-	"fbdevHWLoadPalette",
-	"fbdevHWLoadPaletteWeak",
-
-	/* ScrnInfo hooks */
-	"fbdevHWAdjustFrameWeak",
-	"fbdevHWEnterVTWeak",
-	"fbdevHWLeaveVTWeak",
-	"fbdevHWModeInit",
-	"fbdevHWRestore",
-	"fbdevHWSave",
-	"fbdevHWSaveScreen",
-	"fbdevHWSaveScreenWeak",
-	"fbdevHWSwitchModeWeak",
-	"fbdevHWValidModeWeak",
-
-	"fbdevHWDPMSSet",
-	"fbdevHWDPMSSetWeak",
-
-	NULL
-};
-
 #ifdef XFree86LOADER
 
 MODULESETUPPROTO(FBDevSetup);
@@ -230,8 +169,6 @@ FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	if (!setupDone) {
 		setupDone = TRUE;
 		xf86AddDriver(&FBDEV, module, HaveDriverFuncs);
-		LoaderRefSymLists(afbSymbols, fbSymbols,
-				  shadowSymbols, fbdevHWSymbols, NULL);
 		return (pointer)1;
 	} else {
 		if (errmaj) *errmaj = LDR_ONCEONLY;
@@ -307,8 +244,6 @@ static Bool FBDevPciProbe(DriverPtr drv, int entity_num,
     if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	return FALSE;
 	    
-    xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
-
     pScrn = xf86ConfigPciEntity(NULL, 0, entity_num, NULL, NULL,
 				NULL, NULL, NULL, NULL);
     if (pScrn) {
@@ -369,8 +304,6 @@ FBDevProbe(DriverPtr drv, int flags)
 	if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	    return FALSE;
 	    
-	xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
-	
 	for (i = 0; i < numDevSections; i++) {
 	    Bool isIsa = FALSE;
 	    Bool isPci = FALSE;
@@ -463,7 +396,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	FBDevPtr fPtr;
 	int default_depth, fbbpp;
 	const char *mod = NULL, *s;
-	const char **syms = NULL;
 	int type;
 
 	if (flags & PROBE_DETECT) return FALSE;
@@ -620,7 +552,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	{
 	case FBDEVHW_PLANES:
 		mod = "afb";
-		syms = afbSymbols;
 		break;
 	case FBDEVHW_PACKED_PIXELS:
 		switch (pScrn->bitsPerPixel)
@@ -630,7 +561,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		case 24:
 		case 32:
 			mod = "fb";
-			syms = fbSymbols;
 			break;
 		default:
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -666,9 +596,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		FBDevFreeRec(pScrn);
 		return FALSE;
 	}
-	if (mod && syms) {
-		xf86LoaderReqSymLists(syms, NULL);
-	}
 
 	/* Load shadow if needed */
 	if (fPtr->shadowFB) {
@@ -678,7 +605,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 			FBDevFreeRec(pScrn);
 			return FALSE;
 		}
-		xf86LoaderReqSymLists(shadowSymbols, NULL);
 	}
 
 	TRACE_EXIT("PreInit");
