@@ -23,9 +23,6 @@
 
 /* for visuals */
 #include "fb.h"
-#ifdef USE_AFB
-#include "afb.h"
-#endif
 
 #if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 6
 #include "xf86Resources.h"
@@ -119,9 +116,6 @@ _X_EXPORT DriverRec FBDEV = {
 /* Supported "chipsets" */
 static SymTabRec FBDevChipsets[] = {
     { 0, "fbdev" },
-#ifdef USE_AFB
-    { 0, "afb" },
-#endif
     {-1, NULL }
 };
 
@@ -397,7 +391,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 {
 	FBDevPtr fPtr;
 	int default_depth, fbbpp;
-	const char *mod = NULL, *s;
+	const char *s;
 	int type;
 
 	if (flags & PROBE_DETECT) return FALSE;
@@ -553,9 +547,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Load bpp-specific modules */
 	switch ((type = fbdevHWGetType(pScrn)))
 	{
-	case FBDEVHW_PLANES:
-		mod = "afb";
-		break;
 	case FBDEVHW_PACKED_PIXELS:
 		switch (pScrn->bitsPerPixel)
 		{
@@ -563,7 +554,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		case 16:
 		case 24:
 		case 32:
-			mod = "fb";
 			break;
 		default:
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -595,7 +585,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
                           "unrecognised fbdev hardware type (%d)\n", type);
                return FALSE;
 	}
-	if (mod && xf86LoadSubModule(pScrn, mod) == NULL) {
+	if (xf86LoadSubModule(pScrn, "fb") == NULL) {
 		FBDevFreeRec(pScrn);
 		return FALSE;
 	}
@@ -758,28 +748,6 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	switch ((type = fbdevHWGetType(pScrn)))
 	{
-#ifdef USE_AFB
-	case FBDEVHW_PLANES:
-		if (fPtr->rotate)
-		{
-		  xf86DrvMsg(scrnIndex, X_ERROR,
-			     "internal error: rotate not supported for afb\n");
-		  ret = FALSE;
-		  break;
-		}
-		if (fPtr->shadowFB)
-		{
-		  xf86DrvMsg(scrnIndex, X_ERROR,
-			     "internal error: shadow framebuffer not supported"
-			     " for afb\n");
-		  ret = FALSE;
-		  break;
-		}
-		ret = afbScreenInit
-			(pScreen, fPtr->fbstart, pScrn->virtualX, pScrn->virtualY,
-			 pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth);
-		break;
-#endif
 	case FBDEVHW_PACKED_PIXELS:
 		switch (pScrn->bitsPerPixel) {
 		case 8:
@@ -884,16 +852,6 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	switch ((type = fbdevHWGetType(pScrn)))
 	{
 	/* XXX It would be simpler to use miCreateDefColormap() in all cases. */
-#ifdef USE_AFB
-	case FBDEVHW_PLANES:
-		if (!afbCreateDefColormap(pScreen)) {
-			xf86DrvMsg(scrnIndex, X_ERROR,
-                                   "internal error: afbCreateDefColormap "
-				   "failed in FBDevScreenInit()\n");
-			return FALSE;
-		}
-		break;
-#endif
 	case FBDEVHW_PACKED_PIXELS:
 		if (!miCreateDefColormap(pScreen)) {
 			xf86DrvMsg(scrnIndex, X_ERROR,
