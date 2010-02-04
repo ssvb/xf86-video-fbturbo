@@ -917,6 +917,7 @@ FBDevCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	fbdevHWRestore(pScrn);
 	fbdevHWUnmapVidmem(pScrn);
 	if (fPtr->shadow) {
+	    shadowRemove(pScreen, pScreen->GetScreenPixmap(pScreen));
 	    xfree(fPtr->shadow);
 	    fPtr->shadow = NULL;
 	}
