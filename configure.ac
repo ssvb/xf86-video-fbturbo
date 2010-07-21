@@ -81,7 +81,6 @@ fi
 # Checks for libraries.
 
 
-AC_SUBST([XORG_CFLAGS])
 AC_SUBST([moduledir])
 
 DRIVER_NAME=fbdev
