@@ -80,8 +80,6 @@ fi
 
 # Checks for libraries.
 
-# Checks for header files.
-AC_HEADER_STDC
 
 AC_SUBST([XORG_CFLAGS])
 AC_SUBST([moduledir])
