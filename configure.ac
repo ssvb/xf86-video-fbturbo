@@ -27,7 +27,7 @@ AC_INIT([xf86-video-fbdev],
         [xf86-video-fbdev])
 
 AC_CONFIG_SRCDIR([Makefile.am])
-AM_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
 
 AM_INIT_AUTOMAKE([foreign dist-bzip2])
