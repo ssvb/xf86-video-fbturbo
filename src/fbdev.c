@@ -212,7 +212,7 @@ FBDevFreeRec(ScrnInfoPtr pScrn)
 {
 	if (pScrn->driverPrivate == NULL)
 		return;
-	xfree(pScrn->driverPrivate);
+	free(pScrn->driverPrivate);
 	pScrn->driverPrivate = NULL;
 }
 
@@ -381,7 +381,7 @@ FBDevProbe(DriverPtr drv, int flags)
 		}
 	    }
 	}
-	xfree(devSections);
+	free(devSections);
 	TRACE("probe done");
 	return foundScreen;
 }
@@ -471,7 +471,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 
 	/* handle options */
 	xf86CollectOptions(pScrn, NULL);
-	if (!(fPtr->Options = xalloc(sizeof(FBDevOptions))))
+	if (!(fPtr->Options = malloc(sizeof(FBDevOptions))))
 		return FALSE;
 	memcpy(fPtr->Options, FBDevOptions, sizeof(FBDevOptions));
 	xf86ProcessOptions(pScrn->scrnIndex, fPtr->pEnt->device->options, fPtr->Options);
@@ -736,8 +736,8 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
 
 	if (fPtr->shadowFB) {
-	    fPtr->shadow = xcalloc(1, pScrn->virtualX * pScrn->virtualY *
-				   pScrn->bitsPerPixel);
+	    fPtr->shadow = calloc(1, pScrn->virtualX * pScrn->virtualY *
+				  pScrn->bitsPerPixel);
 
 	    if (!fPtr->shadow) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -918,11 +918,11 @@ FBDevCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	fbdevHWUnmapVidmem(pScrn);
 	if (fPtr->shadow) {
 	    shadowRemove(pScreen, pScreen->GetScreenPixmap(pScreen));
-	    xfree(fPtr->shadow);
+	    free(fPtr->shadow);
 	    fPtr->shadow = NULL;
 	}
 	if (fPtr->pDGAMode) {
-	  xfree(fPtr->pDGAMode);
+	  free(fPtr->pDGAMode);
 	  fPtr->pDGAMode = NULL;
 	  fPtr->nDGAMode = 0;
 	}
@@ -1079,8 +1079,8 @@ FBDevDGAAddModes(ScrnInfoPtr pScrn)
     DGAModePtr pDGAMode;
 
     do {
-	pDGAMode = xrealloc(fPtr->pDGAMode,
-			    (fPtr->nDGAMode + 1) * sizeof(DGAModeRec));
+	pDGAMode = realloc(fPtr->pDGAMode,
+		           (fPtr->nDGAMode + 1) * sizeof(DGAModeRec));
 	if (!pDGAMode)
 	    break;
 
