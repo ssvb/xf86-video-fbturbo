@@ -284,7 +284,9 @@ FBDevProbe(DriverPtr drv, int flags)
 	ScrnInfoPtr pScrn;
        	GDevPtr *devSections;
 	int numDevSections;
+#ifndef XSERVER_LIBPCIACCESS
 	int bus,device,func;
+#endif
 	char *dev;
 	Bool foundScreen = FALSE;
 
