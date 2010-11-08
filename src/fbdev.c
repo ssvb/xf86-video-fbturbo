@@ -896,6 +896,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	fPtr->CloseScreen = pScreen->CloseScreen;
 	pScreen->CloseScreen = FBDevCloseScreen;
 
+#if XV
 	{
 	    XF86VideoAdaptorPtr *ptr;
 
@@ -904,6 +905,7 @@ FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		xf86XVScreenInit(pScreen,ptr,n);
 	    }
 	}
+#endif
 
 	TRACE_EXIT("FBDevScreenInit");
 
