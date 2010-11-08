@@ -37,9 +37,7 @@ driver can pick up the currently used video mode from the framebuffer
 driver and will use it if there are no video modes configured.
 .PP
 For PCI boards you might have to add a BusID line to the Device
-section.  See above for a sample line.  You can use \*q\__xservername__
--scanpci\*q
-to figure out the correct values.
+section.  See above for a sample line.
 .PP
 The following driver 
 .B Options
