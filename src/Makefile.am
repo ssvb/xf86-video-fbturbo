@@ -29,4 +29,5 @@ fbdev_drv_la_LDFLAGS = -module -avoid-version
 fbdev_drv_ladir = @moduledir@/drivers
 
 fbdev_drv_la_SOURCES = \
+         compat-api.h \
          fbdev.c

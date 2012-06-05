@@ -33,6 +33,8 @@
 
 #include "xf86xv.h"
 
+#include "compat-api.h"
+
 #ifdef XSERVER_LIBPCIACCESS
 #include <pciaccess.h>
 #endif
