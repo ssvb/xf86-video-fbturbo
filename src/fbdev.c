@@ -613,7 +613,7 @@ static Bool
 FBDevCreateScreenResources(ScreenPtr pScreen)
 {
     PixmapPtr pPixmap;
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     FBDevPtr fPtr = FBDEVPTR(pScrn);
     Bool ret;
 
@@ -638,7 +638,7 @@ FBDevCreateScreenResources(ScreenPtr pScreen)
 static Bool
 FBDevShadowInit(ScreenPtr pScreen)
 {
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     FBDevPtr fPtr = FBDEVPTR(pScrn);
     
     if (!shadowSetup(pScreen)) {
@@ -655,7 +655,7 @@ FBDevShadowInit(ScreenPtr pScreen)
 static Bool
 FBDevScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	FBDevPtr fPtr = FBDEVPTR(pScrn);
 	VisualPtr visual;
 	int init_picture = 0;
@@ -949,7 +949,7 @@ static void *
 FBDevWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
 		 CARD32 *size, void *closure)
 {
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     FBDevPtr fPtr = FBDEVPTR(pScrn);
 
     if (!pScrn->vtSema)
