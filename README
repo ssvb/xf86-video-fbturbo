@@ -1,20 +1,10 @@
-xf86-video-fbdev - video driver for framebuffer device
+xf86-video-sunxifb - video driver for the devices based on Allwinner A10/A13 SoC
 
-Please submit bugs & patches to the Xorg bugzilla:
+Please submit bugs & patches to:
 
-        https://bugs.freedesktop.org/enter_bug.cgi?product=xorg
+        https://github.com/ssvb/xf86-video-sunxifb
 
 All questions regarding this software should be directed at the
-Xorg mailing list:
+linux-sunxi mailing list:
 
-        http://lists.freedesktop.org/mailman/listinfo/xorg
-
-The master development code repository can be found at:
-
-        git://anongit.freedesktop.org/git/xorg/driver/xf86-video-fbdev
-
-        http://cgit.freedesktop.org/xorg/driver/xf86-video-fbdev
-
-For more information on the git code manager, see:
-
-        http://wiki.x.org/wiki/GitPage
+        https://groups.google.com/d/forum/linux-sunxi

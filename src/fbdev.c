@@ -41,11 +41,11 @@
 static Bool debug = 0;
 
 #define TRACE_ENTER(str) \
-    do { if (debug) ErrorF("fbdev: " str " %d\n",pScrn->scrnIndex); } while (0)
+    do { if (debug) ErrorF("sunxifb: " str " %d\n",pScrn->scrnIndex); } while (0)
 #define TRACE_EXIT(str) \
-    do { if (debug) ErrorF("fbdev: " str " done\n"); } while (0)
+    do { if (debug) ErrorF("sunxifb: " str " done\n"); } while (0)
 #define TRACE(str) \
-    do { if (debug) ErrorF("fbdev trace: " str "\n"); } while (0)
+    do { if (debug) ErrorF("sunxifb trace: " str "\n"); } while (0)
 
 /* -------------------------------------------------------------------- */
 /* prototypes                                                           */
@@ -80,8 +80,8 @@ enum { FBDEV_ROTATE_NONE=0, FBDEV_ROTATE_CW=270, FBDEV_ROTATE_UD=180, FBDEV_ROTA
 static int pix24bpp = 0;
 
 #define FBDEV_VERSION		4000
-#define FBDEV_NAME		"FBDEV"
-#define FBDEV_DRIVER_NAME	"fbdev"
+#define FBDEV_NAME		"SUNXIFB"
+#define FBDEV_DRIVER_NAME	"sunxifb"
 
 #ifdef XSERVER_LIBPCIACCESS
 static const struct pci_id_match fbdev_device_match[] = {
@@ -115,7 +115,7 @@ _X_EXPORT DriverRec FBDEV = {
 
 /* Supported "chipsets" */
 static SymTabRec FBDevChipsets[] = {
-    { 0, "fbdev" },
+    { 0, "sunxifb" },
     {-1, NULL }
 };
 
@@ -143,7 +143,7 @@ MODULESETUPPROTO(FBDevSetup);
 
 static XF86ModuleVersionInfo FBDevVersRec =
 {
-	"fbdev",
+	"sunxifb",
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
@@ -155,7 +155,7 @@ static XF86ModuleVersionInfo FBDevVersRec =
 	{0,0,0,0}
 };
 
-_X_EXPORT XF86ModuleData fbdevModuleData = { &FBDevVersRec, FBDevSetup, NULL };
+_X_EXPORT XF86ModuleData sunxifbModuleData = { &FBDevVersRec, FBDevSetup, NULL };
 
 pointer
 FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
@@ -465,7 +465,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 
 	pScrn->progClock = TRUE;
 	pScrn->rgbBits   = 8;
-	pScrn->chipset   = "fbdev";
+	pScrn->chipset   = "sunxifb";
 	pScrn->videoRam  = fbdevHWGetVidmem(pScrn);
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "hardware: %s (video memory:"

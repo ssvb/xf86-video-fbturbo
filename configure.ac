@@ -22,10 +22,10 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-fbdev],
-        [0.4.3],
-        [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
-        [xf86-video-fbdev])
+AC_INIT([xf86-video-sunxifb],
+        [0.0.1],
+        [https://github.com/ssvb/xf86-video-sunxifb],
+        [xf86-video-sunxifb])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
@@ -84,7 +84,7 @@ fi
 
 AC_SUBST([moduledir])
 
-DRIVER_NAME=fbdev
+DRIVER_NAME=sunxifb
 AC_SUBST([DRIVER_NAME])
 
 AC_CONFIG_FILES([

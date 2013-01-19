@@ -24,10 +24,10 @@
 # _ladir passes a dummy rpath to libtool so the thing will actually link
 # TODO: -nostdlib/-Bstatic/-lgcc platform magic, not installing the .a, etc.
 AM_CFLAGS = @XORG_CFLAGS@
-fbdev_drv_la_LTLIBRARIES = fbdev_drv.la
-fbdev_drv_la_LDFLAGS = -module -avoid-version
-fbdev_drv_ladir = @moduledir@/drivers
+sunxifb_drv_la_LTLIBRARIES = sunxifb_drv.la
+sunxifb_drv_la_LDFLAGS = -module -avoid-version
+sunxifb_drv_ladir = @moduledir@/drivers
 
-fbdev_drv_la_SOURCES = \
+sunxifb_drv_la_SOURCES = \
          compat-api.h \
          fbdev.c
