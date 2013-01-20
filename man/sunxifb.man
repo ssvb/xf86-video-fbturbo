@@ -62,6 +62,9 @@ Enable or disable use of the shadow framebuffer layer.  Default: on.
 Enable rotation of the display. The supported values are "CW" (clockwise,
 90 degrees), "UD" (upside down, 180 degrees) and "CCW" (counter clockwise,
 270 degrees). Implies use of the shadow framebuffer layer.   Default: off.
+.TP
+.BI "Option \*qHWCursor\*q \*q" boolean \*q
+Enable or disable the HW cursor.  Default: on.
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),
 X(__miscmansuffix__), fbdevhw(__drivermansuffix__)

@@ -49,9 +49,13 @@ typedef struct {
 	OptionInfoPtr			Options;
 
 	void				*sunxi_disp_private;;
+	void				*SunxiDispHardwareCursor_private;
 } FBDevRec, *FBDevPtr;
 
 #define FBDEVPTR(p) ((FBDevPtr)((p)->driverPrivate))
 
 #define SUNXI_DISP(p) ((sunxi_disp_t *) \
                        (FBDEVPTR(p)->sunxi_disp_private))
+
+#define SUNXI_DISP_HWC(p) ((SunxiDispHardwareCursor *) \
+                          (FBDEVPTR(p)->SunxiDispHardwareCursor_private))

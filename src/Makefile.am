@@ -33,4 +33,6 @@ sunxifb_drv_la_SOURCES = \
          fbdev.c \
          fbdev_priv.h \
          sunxi_disp.c \
-         sunxi_disp.h
+         sunxi_disp.h \
+         sunxi_disp_hwcursor.c \
+         sunxi_disp_hwcursor.h

@@ -152,7 +152,9 @@ typedef enum {
 	OPTION_SHADOW_FB,
 	OPTION_ROTATE,
 	OPTION_FBDEV,
-	OPTION_DEBUG
+	OPTION_DEBUG,
+	OPTION_HW_CURSOR,
+	OPTION_SW_CURSOR
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
@@ -160,6 +162,8 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_ROTATE,	"Rotate",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_FBDEV,		"fbdev",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_DEBUG,		"debug",	OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_HW_CURSOR,	"HWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_SW_CURSOR,	"SWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -919,6 +923,24 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
 	                                fPtr->pEnt->device->options,"fbdev"));
 
+	if (!fPtr->sunxi_disp_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "failed to enable the use of sunxi display controller\n");
+
+	if (!xf86ReturnOptValBool(fPtr->Options, OPTION_SW_CURSOR, FALSE) &&
+	     xf86ReturnOptValBool(fPtr->Options, OPTION_HW_CURSOR, TRUE)) {
+
+	    fPtr->SunxiDispHardwareCursor_private = SunxiDispHardwareCursor_Init(
+	                                pScreen);
+
+	    if (fPtr->SunxiDispHardwareCursor_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "using hardware cursor\n");
+	    else
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "failed to enable hardware cursor\n");
+	}
+
 	TRACE_EXIT("FBDevScreenInit");
 
 	return TRUE;
@@ -929,6 +951,12 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	FBDevPtr fPtr = FBDEVPTR(pScrn);
+
+	if (fPtr->SunxiDispHardwareCursor_private) {
+	    SunxiDispHardwareCursor_Close(pScreen);
+	    free(fPtr->SunxiDispHardwareCursor_private);
+	    fPtr->SunxiDispHardwareCursor_private = NULL;
+	}
 
 	if (fPtr->sunxi_disp_private) {
 	    sunxi_disp_close(fPtr->sunxi_disp_private);
