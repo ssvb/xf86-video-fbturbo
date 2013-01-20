@@ -177,25 +177,7 @@ FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 /* -------------------------------------------------------------------- */
 /* our private data, and two functions to allocate/free this            */
 
-typedef struct {
-	unsigned char*			fbstart;
-	unsigned char*			fbmem;
-	int				fboff;
-	int				lineLength;
-	int				rotate;
-	Bool				shadowFB;
-	void				*shadow;
-	CloseScreenProcPtr		CloseScreen;
-	CreateScreenResourcesProcPtr	CreateScreenResources;
-	void				(*PointerMoved)(SCRN_ARG_TYPE arg, int x, int y);
-	EntityInfoPtr			pEnt;
-	/* DGA info */
-	DGAModePtr			pDGAMode;
-	int				nDGAMode;
-	OptionInfoPtr			Options;
-} FBDevRec, *FBDevPtr;
-
-#define FBDEVPTR(p) ((FBDevPtr)((p)->driverPrivate))
+#include "fbdev_priv.h"
 
 static Bool
 FBDevGetRec(ScrnInfoPtr pScrn)
