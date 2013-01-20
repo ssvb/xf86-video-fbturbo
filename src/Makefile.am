@@ -31,4 +31,6 @@ sunxifb_drv_ladir = @moduledir@/drivers
 sunxifb_drv_la_SOURCES = \
          compat-api.h \
          fbdev.c \
-         fbdev_priv.h
+         fbdev_priv.h \
+         sunxi_disp.c \
+         sunxi_disp.h
