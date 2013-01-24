@@ -23,7 +23,7 @@
 # Initialize Autoconf
 AC_PREREQ([2.60])
 AC_INIT([xf86-video-sunxifb],
-        [0.2.0],
+        [0.3.1],
         [https://github.com/ssvb/xf86-video-sunxifb],
         [xf86-video-sunxifb])
 AC_CONFIG_SRCDIR([Makefile.am])
