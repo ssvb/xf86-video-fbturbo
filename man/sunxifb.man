@@ -83,9 +83,9 @@ which eliminates unnecessary CPU overhead.  Default: on.
 the hardware overlays are automatically disabled in the case if a
 compositing window manager (xfwm4, kwin, ...) is used for various
 fancy desktop effects such as windows translucency or shadows. Maybe
-some improments are possible in this area. But if you really care
-about the desktop performance, you don't want to enable any
-compositing effects in your window manager anyway.
+some improvements are possible in this area. But if you really care
+about the desktop performance, then you likely don't want to enable
+any compositing effects in your window manager anyway.
 
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),
