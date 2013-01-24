@@ -65,6 +65,28 @@ Enable rotation of the display. The supported values are "CW" (clockwise,
 .TP
 .BI "Option \*qHWCursor\*q \*q" boolean \*q
 Enable or disable the HW cursor.  Default: on.
+.TP
+.BI "Option \*qDRI2\*q \*q" boolean \*q
+Enable or disable DRI2 integration for Mali GPU. Provides hardware
+accelerated OpenGL ES in the case if proprietary blob libMali.so
+is installed in the system and linux kernel provides modules mali.ko,
+mali_drm.ko and ump.ko with compatible version (for example, both kernel
+modules and libMali.so can have revision r3p0).  Default: on.
+.TP
+.BI "Option \*qDRI2HWOverlay\*q \*q" boolean \*q
+Enable the use of display controller hardware overlays (aka "layers",
+"windows", ...) for fully visible DRI2 backed OpenGL ES windows in order
+to avoid expensive memory copy operations. That's a zero-copy solution
+which eliminates unnecessary CPU overhead.  Default: on.
+
+.B Note:
+the hardware overlays are automatically disabled in the case if a
+compositing window manager (xfwm4, kwin, ...) is used for various
+fancy desktop effects such as windows translucency or shadows. Maybe
+some improments are possible in this area. But if you really care
+about the desktop performance, you don't want to enable any
+compositing effects in your window manager anyway.
+
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),
 X(__miscmansuffix__), fbdevhw(__drivermansuffix__)

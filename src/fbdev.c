@@ -47,6 +47,11 @@
 #include "dgaproc.h"
 
 #include "sunxi_disp.h"
+#include "sunxi_disp_hwcursor.h"
+
+#ifdef HAVE_LIBUMP
+#include "sunxi_mali_ump_dri2.h"
+#endif
 
 /* for visuals */
 #include "fb.h"
@@ -154,7 +159,9 @@ typedef enum {
 	OPTION_FBDEV,
 	OPTION_DEBUG,
 	OPTION_HW_CURSOR,
-	OPTION_SW_CURSOR
+	OPTION_SW_CURSOR,
+	OPTION_DRI2,
+	OPTION_DRI2_OVERLAY,
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
@@ -164,6 +171,8 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_DEBUG,		"debug",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_HW_CURSOR,	"HWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_SW_CURSOR,	"SWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_DRI2,		"DRI2",		OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_DRI2_OVERLAY,	"DRI2HWOverlay",OPTV_BOOLEAN,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -941,6 +950,25 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		           "failed to enable hardware cursor\n");
 	}
 
+#ifdef HAVE_LIBUMP
+	if (xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2, TRUE)) {
+
+	    fPtr->SunxiMaliDRI2_private = SunxiMaliDRI2_Init(pScreen,
+		xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2_OVERLAY, TRUE));
+
+	    if (fPtr->SunxiMaliDRI2_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "using DRI2 integration for Mali GPU (UMP buffers)\n");
+	    else
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "failed to enable DRI2 integration for Mali GPU\n");
+	}
+	else {
+	    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+	               "DRI2 integration for Mali GPU is disabled in xorg.conf\n");
+	}
+#endif
+
 	TRACE_EXIT("FBDevScreenInit");
 
 	return TRUE;
@@ -951,6 +979,14 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	FBDevPtr fPtr = FBDEVPTR(pScrn);
+
+#ifdef HAVE_LIBUMP
+	if (fPtr->SunxiMaliDRI2_private) {
+	    SunxiMaliDRI2_Close(pScreen);
+	    free(fPtr->SunxiMaliDRI2_private);
+	    fPtr->SunxiMaliDRI2_private = NULL;
+	}
+#endif
 
 	if (fPtr->SunxiDispHardwareCursor_private) {
 	    SunxiDispHardwareCursor_Close(pScreen);

@@ -36,3 +36,9 @@ sunxifb_drv_la_SOURCES = \
          sunxi_disp.h \
          sunxi_disp_hwcursor.c \
          sunxi_disp_hwcursor.h
+
+if HAVE_LIBUMP
+sunxifb_drv_la_SOURCES += \
+         sunxi_mali_ump_dri2.c \
+         sunxi_mali_ump_dri2.h
+endif

@@ -81,6 +81,14 @@ fi
 
 # Checks for libraries.
 
+AC_CHECK_LIB([UMP], [ump_open],
+             [have_libump=yes
+              LIBS="$LIBS -lUMP"
+              AC_DEFINE(HAVE_LIBUMP,[1],[libUMP library])],
+             [have_libump=no])
+AC_CHECK_LIB([UMP], [ump_cache_operations_control],
+             [AC_DEFINE(HAVE_LIBUMP_CACHE_CONTROL,[1],[UMP cache control])])
+AM_CONDITIONAL([HAVE_LIBUMP], [test x$have_libump = xyes])
 
 AC_SUBST([moduledir])
 
