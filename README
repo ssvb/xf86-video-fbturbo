@@ -8,3 +8,10 @@ All questions regarding this software should be directed at the
 linux-sunxi mailing list:
 
         https://groups.google.com/d/forum/linux-sunxi
+
+This driver is intended to be a drop-in replacement for x86-video-mali
+and the installation instructions from http://linux-sunxi.org should
+also work. Gentoo Linux users may find the following portage overlay
+useful to simplify the installation process:
+
+        https://github.com/ssvb/gentoo-overlay-sunxi-x11
