@@ -27,6 +27,26 @@
 #include <ump/ump.h>
 #include <ump/ump_ref_drv.h>
 
+#include "uthash.h"
+
+/* Data structure with the information about an UMP buffer */
+typedef struct
+{
+    /* The migrated pixmap (may be NULL if it is a window) */
+    PixmapPtr               pPixmap;
+    int                     BackupDevKind;
+    void                   *BackupDevPrivatePtr;
+    int                     refcount;
+    UT_hash_handle          hh;
+
+    ump_handle              handle;
+    size_t                  size;
+    uint8_t                *addr;
+    int                     depth;
+    size_t                  width;
+    size_t                  height;
+} UMPBufferInfoRec, *UMPBufferInfoPtr;
+
 typedef struct {
     int                     overlay_x;
     int                     overlay_y;
@@ -40,7 +60,10 @@ typedef struct {
     DestroyWindowProcPtr    DestroyWindow;
     PostValidateTreeProcPtr PostValidateTree;
     GetImageProcPtr         GetImage;
+    DestroyPixmapProcPtr    DestroyPixmap;
     ump_secure_id           ump_fb_secure_id;
+
+    UMPBufferInfoPtr        HashPixmapToUMP;
 
     int                     drm_fd;
 } SunxiMaliDRI2;

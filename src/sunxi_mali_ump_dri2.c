@@ -127,17 +127,72 @@ WindowWalker(WindowPtr pWin, pointer value)
     return WT_WALKCHILDREN;
 }
 
+/* Migrate pixmap to UMP buffer */
+static UMPBufferInfoPtr
+MigratePixmapToUMP(PixmapPtr pPixmap)
+{
+    ScreenPtr pScreen = pPixmap->drawable.pScreen;
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
+    UMPBufferInfoPtr umpbuf;
+    size_t pitch = ((pPixmap->devKind + 7) / 8) * 8;
+    size_t size = pitch * pPixmap->drawable.height;
+
+    HASH_FIND_PTR(self->HashPixmapToUMP, &pPixmap, umpbuf);
+
+    if (umpbuf) {
+        DebugMsg("MigratePixmapToUMP %p, already exists = %p\n", pPixmap, umpbuf);
+        return umpbuf;
+    }
+
+    /* create the UMP buffer */
+    umpbuf = calloc(1, sizeof(UMPBufferInfoRec));
+    if (!umpbuf) {
+        ErrorF("MigratePixmapToUMP: calloc failed\n");
+        return NULL;
+    }
+    umpbuf->refcount = 1;
+    umpbuf->pPixmap = pPixmap;
+    umpbuf->handle = ump_ref_drv_allocate(size, UMP_REF_DRV_CONSTRAINT_PHYSICALLY_LINEAR);
+    if (umpbuf->handle == UMP_INVALID_MEMORY_HANDLE) {
+        ErrorF("MigratePixmapToUMP: ump_ref_drv_allocate failed\n");
+        free(umpbuf);
+        return NULL;
+    }
+    umpbuf->size = size;
+    umpbuf->addr = ump_mapped_pointer_get(umpbuf->handle);
+    umpbuf->depth = pPixmap->drawable.depth;
+    umpbuf->width = pPixmap->drawable.width;
+    umpbuf->height = pPixmap->drawable.height;
+
+    /* copy the pixel data to the new location */
+    if (pitch == pPixmap->devKind) {
+        memcpy(umpbuf->addr, pPixmap->devPrivate.ptr, size);
+    } else {
+        int y;
+        for (y = 0; y < umpbuf->height; y++) {
+            memcpy(umpbuf->addr + y * pitch, 
+                   pPixmap->devPrivate.ptr + y * pPixmap->devKind,
+                   pPixmap->devKind);
+        }
+    }
+
+    umpbuf->BackupDevKind = pPixmap->devKind;
+    umpbuf->BackupDevPrivatePtr = pPixmap->devPrivate.ptr;
+
+    pPixmap->devKind = pitch;
+    pPixmap->devPrivate.ptr = umpbuf->addr;
+
+    HASH_ADD_PTR(self->HashPixmapToUMP, pPixmap, umpbuf);
+
+    DebugMsg("MigratePixmapToUMP %p, new buf = %p\n", pPixmap, umpbuf);
+    return umpbuf;
+}
+
 static void UpdateOverlay(ScreenPtr pScreen);
 
-typedef struct
-{
-    ump_handle   handle;
-    size_t       size;
-    uint8_t *    addr;
-    int          depth;
-    size_t       width;
-    size_t       height;
-} MaliDRI2BufferPrivateRec, *MaliDRI2BufferPrivatePtr;
+typedef UMPBufferInfoRec MaliDRI2BufferPrivateRec;
+typedef UMPBufferInfoPtr MaliDRI2BufferPrivatePtr;
 
 static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                                            unsigned int attachment,
@@ -145,21 +200,44 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
 {
     ScreenPtr                pScreen  = pDraw->pScreen;
     ScrnInfoPtr              pScrn    = xf86Screens[pScreen->myNum];
-    DRI2Buffer2Ptr           buffer   = calloc(1, sizeof *buffer);
-    MaliDRI2BufferPrivatePtr privates = calloc(1, sizeof *privates);
+    DRI2Buffer2Ptr           buffer;
+    MaliDRI2BufferPrivatePtr privates;
     ump_handle               handle;
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
     sunxi_disp_t            *disp = SUNXI_DISP(pScrn);
     Bool                     can_use_overlay = TRUE;
 
-    if (!buffer || !privates) {
-        free(buffer);
-        free(privates);
-        ErrorF("MaliDRI2CreateBuffer: calloc failed\n\n");
+    if (!(buffer = calloc(1, sizeof *buffer))) {
+        ErrorF("MaliDRI2CreateBuffer: calloc failed\n");
         return NULL;
     }
 
-    /* The drawable must be a window */
+    /* If it is a pixmap, just migrate this pixmap to UMP buffer */
+    if (pDraw->type == DRAWABLE_PIXMAP)
+    {
+        if (!(privates = MigratePixmapToUMP((PixmapPtr)pDraw))) {
+            ErrorF("MaliDRI2CreateBuffer: MigratePixmapToUMP failed\n");
+            free(buffer);
+            return NULL;
+        }
+        privates->refcount++;
+        buffer->attachment    = attachment;
+        buffer->driverPrivate = privates;
+        buffer->format        = format;
+        buffer->flags         = 0;
+        buffer->cpp           = pDraw->bitsPerPixel / 8;
+        buffer->pitch         = ((PixmapPtr)pDraw)->devKind;
+        buffer->name = ump_secure_id_get(privates->handle);
+        return buffer;
+    }
+
+    if (!(privates = calloc(1, sizeof *privates))) {
+        ErrorF("MaliDRI2CreateBuffer: calloc failed\n");
+        free(buffer);
+        return NULL;
+    }
+
+    /* The drawable must be a window for using hardware overlays */
     if (pDraw->type != DRAWABLE_WINDOW)
         can_use_overlay = FALSE;
 
@@ -253,11 +331,17 @@ static void MaliDRI2DestroyBuffer(DrawablePtr pDraw, DRI2Buffer2Ptr buffer)
 
     if (buffer != NULL) {
         privates = (MaliDRI2BufferPrivatePtr)buffer->driverPrivate;
-        if (privates->handle != UMP_INVALID_MEMORY_HANDLE) {
-            ump_mapped_pointer_release(privates->handle);
-            ump_reference_release(privates->handle);
+        if (!privates->pPixmap) {
+            /* If pPixmap != 0, then these are freed in DestroyPixmap */
+            if (privates->handle != UMP_INVALID_MEMORY_HANDLE) {
+                ump_mapped_pointer_release(privates->handle);
+                ump_reference_release(privates->handle);
+            }
         }
-        free(privates);
+        if (--privates->refcount <= 0) {
+            DebugMsg("free(privates)\n");
+            free(privates);
+        }
         free(buffer);
     }
 }
@@ -479,6 +563,42 @@ GetImage(DrawablePtr pDrawable, int x, int y, int w, int h,
     }
 }
 
+static Bool
+DestroyPixmap(PixmapPtr pPixmap)
+{
+    ScreenPtr pScreen = pPixmap->drawable.pScreen;
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
+    Bool result;
+    UMPBufferInfoPtr umpbuf;
+    HASH_FIND_PTR(self->HashPixmapToUMP, &pPixmap, umpbuf);
+
+    if (umpbuf) {
+        DebugMsg("DestroyPixmap %p for migrated UMP pixmap (UMP buffer=%p)\n", pPixmap, umpbuf);
+
+        pPixmap->devKind = umpbuf->BackupDevKind;
+        pPixmap->devPrivate.ptr = umpbuf->BackupDevPrivatePtr;
+
+        ump_mapped_pointer_release(umpbuf->handle);
+        ump_reference_release(umpbuf->handle);
+
+        HASH_DEL(self->HashPixmapToUMP, umpbuf);
+        DebugMsg("umpbuf->refcount=%d\n", umpbuf->refcount);
+        if (--umpbuf->refcount <= 0) {
+            DebugMsg("free(umpbuf)\n");
+            free(umpbuf);
+        }
+    }
+
+    pScreen->DestroyPixmap = self->DestroyPixmap;
+    result = (*pScreen->DestroyPixmap) (pPixmap);
+    self->DestroyPixmap = pScreen->DestroyPixmap;
+    pScreen->DestroyPixmap = DestroyPixmap;
+
+
+    return result;
+}
+
 SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
 {
     int drm_fd;
@@ -554,6 +674,9 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         /* Wrap the current GetImage function */
         private->GetImage = pScreen->GetImage;
         pScreen->GetImage = GetImage;
+        /* Wrap the current DestroyPixmap function */
+        private->DestroyPixmap = pScreen->DestroyPixmap;
+        pScreen->DestroyPixmap = DestroyPixmap;
 
         private->ump_fb_secure_id = ump_id_fb;
         private->drm_fd = drm_fd;
@@ -570,6 +693,7 @@ void SunxiMaliDRI2_Close(ScreenPtr pScreen)
     pScreen->DestroyWindow    = private->DestroyWindow;
     pScreen->PostValidateTree = private->PostValidateTree;
     pScreen->GetImage         = private->GetImage;
+    pScreen->DestroyPixmap    = private->DestroyPixmap;
 
     drmClose(private->drm_fd);
     DRI2CloseScreen(pScreen);
