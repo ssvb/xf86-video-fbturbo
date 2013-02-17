@@ -26,8 +26,13 @@
 
 #include "xf86Cursor.h"
 
+typedef void (*EnableHWCursorProcPtr)(ScrnInfoPtr pScrn);
+typedef void (*DisableHWCursorProcPtr)(ScrnInfoPtr pScrn);
+
 typedef struct {
     xf86CursorInfoPtr hwcursor;
+    EnableHWCursorProcPtr EnableHWCursor;
+    DisableHWCursorProcPtr DisableHWCursor;
 } SunxiDispHardwareCursor;
 
 SunxiDispHardwareCursor *SunxiDispHardwareCursor_Init(ScreenPtr pScreen);

@@ -43,6 +43,7 @@
 
 #include "fbdev_priv.h"
 #include "sunxi_disp.h"
+#include "sunxi_disp_hwcursor.h"
 #include "sunxi_disp_ioctl.h"
 #include "sunxi_mali_ump_dri2.h"
 
@@ -446,6 +447,16 @@ static void UpdateOverlay(ScreenPtr pScreen)
     if (!self->pOverlayWin || !disp)
         return;
 
+    /* Disable overlays if the hardware cursor is not in use */
+    if (!self->bHardwareCursorIsInUse) {
+        if (self->bOverlayWinEnabled) {
+            DebugMsg("Disabling overlay (no hardware cursor)\n");
+            sunxi_layer_hide(disp);
+            self->bOverlayWinEnabled = FALSE;
+        }
+        return;
+    }
+
     /* If the window is not mapped, make sure that the overlay is disabled */
     if (!self->pOverlayWin->mapped)
     {
@@ -599,12 +610,45 @@ DestroyPixmap(PixmapPtr pPixmap)
     return result;
 }
 
+static void EnableHWCursor(ScrnInfoPtr pScrn)
+{
+    SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
+    SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
+    self->bHardwareCursorIsInUse = TRUE;
+    UpdateOverlay(screenInfo.screens[pScrn->scrnIndex]);
+    DebugMsg("EnableHWCursor\n");
+
+    if (self->EnableHWCursor) {
+        hwc->EnableHWCursor = self->EnableHWCursor;
+        (*hwc->EnableHWCursor) (pScrn);
+        self->EnableHWCursor = hwc->EnableHWCursor;
+        hwc->EnableHWCursor = EnableHWCursor;
+    }
+}
+
+static void DisableHWCursor(ScrnInfoPtr pScrn)
+{
+    SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
+    SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
+    self->bHardwareCursorIsInUse = FALSE;
+    UpdateOverlay(screenInfo.screens[pScrn->scrnIndex]);
+    DebugMsg("DisableHWCursor\n");
+
+    if (self->DisableHWCursor) {
+        hwc->DisableHWCursor = self->DisableHWCursor;
+        (*hwc->DisableHWCursor) (pScrn);
+        self->DisableHWCursor = hwc->DisableHWCursor;
+        hwc->DisableHWCursor = DisableHWCursor;
+    }
+}
+
 SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
 {
     int drm_fd;
     DRI2InfoRec info;
     ump_secure_id ump_id1, ump_id2, ump_id_fb;
-    sunxi_disp_t *disp = SUNXI_DISP(xf86Screens[pScreen->myNum]);
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
     ump_id1 = ump_id2 = ump_id_fb = UMP_INVALID_SECURE_ID;
 
     if (disp && bUseOverlay) {
@@ -663,6 +707,7 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         return NULL;
     }
     else {
+        SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
         SunxiMaliDRI2 *private = calloc(1, sizeof(SunxiMaliDRI2));
 
         /* Wrap the current DestroyWindow function */
@@ -678,6 +723,14 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         private->DestroyPixmap = pScreen->DestroyPixmap;
         pScreen->DestroyPixmap = DestroyPixmap;
 
+        /* Wrap hardware cursor callback functions */
+        if (hwc) {
+            private->EnableHWCursor = hwc->EnableHWCursor;
+            hwc->EnableHWCursor = EnableHWCursor;
+            private->DisableHWCursor = hwc->DisableHWCursor;
+            hwc->DisableHWCursor = DisableHWCursor;
+        }
+
         private->ump_fb_secure_id = ump_id_fb;
         private->drm_fd = drm_fd;
         return private;
@@ -688,12 +741,18 @@ void SunxiMaliDRI2_Close(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
+    SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
 
     /* Unwrap functions */
     pScreen->DestroyWindow    = private->DestroyWindow;
     pScreen->PostValidateTree = private->PostValidateTree;
     pScreen->GetImage         = private->GetImage;
     pScreen->DestroyPixmap    = private->DestroyPixmap;
+
+    if (hwc) {
+        hwc->EnableHWCursor  = private->EnableHWCursor;
+        hwc->DisableHWCursor = private->DisableHWCursor;
+    }
 
     drmClose(private->drm_fd);
     DRI2CloseScreen(pScreen);

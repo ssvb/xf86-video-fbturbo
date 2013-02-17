@@ -57,6 +57,10 @@ typedef struct {
     Bool                    bOverlayWinOverlapped;
     Bool                    bWalkingAboveOverlayWin;
 
+    Bool                    bHardwareCursorIsInUse;
+    EnableHWCursorProcPtr   EnableHWCursor;
+    DisableHWCursorProcPtr  DisableHWCursor;
+
     DestroyWindowProcPtr    DestroyWindow;
     PostValidateTreeProcPtr PostValidateTree;
     GetImageProcPtr         GetImage;

@@ -59,8 +59,24 @@ static void SetCursorColors(ScrnInfoPtr pScrn, int bg, int fg)
 
 static void LoadCursorImage(ScrnInfoPtr pScrn, unsigned char *bits)
 {
+    SunxiDispHardwareCursor *private = SUNXI_DISP_HWC(pScrn);
     sunxi_disp_t *disp = SUNXI_DISP(pScrn);
     sunxi_hw_cursor_load_pixeldata(disp, bits);
+    if (private->EnableHWCursor)
+        (*private->EnableHWCursor) (pScrn);
+}
+
+static Bool UseHWCursorARGB(ScreenPtr pScreen, CursorPtr pCurs)
+{
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    SunxiDispHardwareCursor *private = SUNXI_DISP_HWC(pScrn);
+    if (private->DisableHWCursor)
+        (*private->DisableHWCursor) (pScrn);
+    return FALSE;
+}
+
+static void LoadCursorARGB(ScrnInfoPtr pScrn, CursorPtr pCurs)
+{
 }
 
 SunxiDispHardwareCursor *SunxiDispHardwareCursor_Init(ScreenPtr pScreen)
@@ -87,6 +103,9 @@ SunxiDispHardwareCursor *SunxiDispHardwareCursor_Init(ScreenPtr pScreen)
     InfoPtr->Flags = HARDWARE_CURSOR_TRUECOLOR_AT_8BPP |
                      HARDWARE_CURSOR_SOURCE_MASK_INTERLEAVE_1 |
                      HARDWARE_CURSOR_ARGB;
+
+    InfoPtr->UseHWCursorARGB = UseHWCursorARGB;
+    InfoPtr->LoadCursorARGB = LoadCursorARGB;
 
     if (!xf86InitCursor(pScreen, InfoPtr)) {
         ErrorF("SunxiDispHardwareCursor_Init: xf86InitCursor(pScreen, InfoPtr) failed\n");
