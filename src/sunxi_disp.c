@@ -153,7 +153,7 @@ int sunxi_disp_close(sunxi_disp_t *ctx)
  * four 32-bit ARGB entries in the palette.                                  *
  *****************************************************************************/
 
-int sunxi_hw_cursor_load_pixeldata(sunxi_disp_t *ctx, uint8_t pixeldata[1024])
+int sunxi_hw_cursor_load_64x64x2bpp(sunxi_disp_t *ctx, uint8_t pixeldata[1024])
 {
     uint32_t tmp[4];
     __disp_hwc_pattern_t hwc;
@@ -164,13 +164,24 @@ int sunxi_hw_cursor_load_pixeldata(sunxi_disp_t *ctx, uint8_t pixeldata[1024])
     return ioctl(ctx->fd_disp, DISP_CMD_HWC_SET_FB, &tmp);
 }
 
-int sunxi_hw_cursor_load_palette(sunxi_disp_t *ctx, uint32_t palette[4])
+int sunxi_hw_cursor_load_32x32x8bpp(sunxi_disp_t *ctx, uint8_t pixeldata[1024])
+{
+    uint32_t tmp[4];
+    __disp_hwc_pattern_t hwc;
+    hwc.addr = (uintptr_t)&pixeldata[0];
+    hwc.pat_mode = DISP_HWC_MOD_H32_V32_8BPP;
+    tmp[0] = ctx->fb_id;
+    tmp[1] = (uintptr_t)&hwc;
+    return ioctl(ctx->fd_disp, DISP_CMD_HWC_SET_FB, &tmp);
+}
+
+int sunxi_hw_cursor_load_palette(sunxi_disp_t *ctx, uint32_t *palette, int n)
 {
     uint32_t tmp[4];
     tmp[0] = ctx->fb_id;
-    tmp[1] = (uintptr_t)&palette[0];
+    tmp[1] = (uintptr_t)palette;
     tmp[2] = 0;
-    tmp[3] = 4 * sizeof(uint32_t);
+    tmp[3] = n * sizeof(uint32_t);
     return ioctl(ctx->fd_disp, DISP_CMD_HWC_SET_PALETTE_TABLE, &tmp);
 }
 

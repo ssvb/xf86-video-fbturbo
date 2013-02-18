@@ -57,8 +57,9 @@ int sunxi_disp_close(sunxi_disp_t *ctx);
  * Support for hardware cursor, which has 64x64 size, 2 bits per pixel,
  * four 32-bit ARGB entries in the palette.
  */
-int sunxi_hw_cursor_load_pixeldata(sunxi_disp_t *ctx, uint8_t pixeldata[1024]);
-int sunxi_hw_cursor_load_palette(sunxi_disp_t *ctx, uint32_t palette[4]);
+int sunxi_hw_cursor_load_64x64x2bpp(sunxi_disp_t *ctx, uint8_t pixeldata[1024]);
+int sunxi_hw_cursor_load_32x32x8bpp(sunxi_disp_t *ctx, uint8_t pixeldata[1024]);
+int sunxi_hw_cursor_load_palette(sunxi_disp_t *ctx, uint32_t *palette, int n);
 int sunxi_hw_cursor_set_position(sunxi_disp_t *ctx, int x, int y);
 int sunxi_hw_cursor_show(sunxi_disp_t *ctx);
 int sunxi_hw_cursor_hide(sunxi_disp_t *ctx);
