@@ -207,10 +207,20 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
     sunxi_disp_t            *disp = SUNXI_DISP(pScrn);
     Bool                     can_use_overlay = TRUE;
+    PixmapPtr                pWindowPixmap;
 
     if (!(buffer = calloc(1, sizeof *buffer))) {
         ErrorF("MaliDRI2CreateBuffer: calloc failed\n");
         return NULL;
+    }
+
+    if (pDraw->type == DRAWABLE_WINDOW &&
+        (pWindowPixmap = pScreen->GetWindowPixmap((WindowPtr)pDraw)))
+    {
+        DebugMsg("win=%p (w=%d, h=%d, x=%d, y=%d) has backing pix=%p (w=%d, h=%d, screen_x=%d, screen_y=%d)\n",
+                 pDraw, pDraw->width, pDraw->height, pDraw->x, pDraw->y,
+                 pWindowPixmap, pWindowPixmap->drawable.width, pWindowPixmap->drawable.height,
+                 pWindowPixmap->screen_x, pWindowPixmap->screen_y);
     }
 
     /* If it is a pixmap, just migrate this pixmap to UMP buffer */
@@ -229,6 +239,11 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         buffer->cpp           = pDraw->bitsPerPixel / 8;
         buffer->pitch         = ((PixmapPtr)pDraw)->devKind;
         buffer->name = ump_secure_id_get(privates->handle);
+
+        DebugMsg("DRI2CreateBuffer pix=%p, buf=%p:%p, att=%d, ump=%d:%d, w=%d, h=%d, cpp=%d, depth=%d\n",
+                 pDraw, buffer, privates, attachment, buffer->name, buffer->flags,
+                 privates->width, privates->height, buffer->cpp, privates->depth);
+
         return buffer;
     }
 
@@ -312,8 +327,9 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         buffer->flags = 0;
     }
 
-    DebugMsg("MaliDRI2CreateBuffer attachment=%d %p, format=%d, width=%d, height=%d, cpp=%d, depth=%d\n",
-           attachment, buffer, format, privates->width, privates->height, buffer->cpp, privates->depth);
+    DebugMsg("DRI2CreateBuffer win=%p, buf=%p:%p, att=%d, ump=%d:%d, w=%d, h=%d, cpp=%d, depth=%d\n",
+             pDraw, buffer, privates, attachment, buffer->name, buffer->flags,
+             privates->width, privates->height, buffer->cpp, privates->depth);
 
     return buffer;
 }
@@ -328,7 +344,9 @@ static void MaliDRI2DestroyBuffer(DrawablePtr pDraw, DRI2Buffer2Ptr buffer)
     if (drvpriv->pOverlayDirtyDRI2Buf == buffer)
         drvpriv->pOverlayDirtyDRI2Buf = NULL;
 
-    DebugMsg("Destroying attachment %d for drawable %p\n", buffer->attachment, pDraw);
+    DebugMsg("DRI2DestroyBuffer %s=%p, buf=%p:%p, att=%d\n",
+             pDraw->type == DRAWABLE_WINDOW ? "win" : "pix",
+             pDraw, buffer, buffer->driverPrivate, buffer->attachment);
 
     if (buffer != NULL) {
         privates = (MaliDRI2BufferPrivatePtr)buffer->driverPrivate;
@@ -614,9 +632,13 @@ static void EnableHWCursor(ScrnInfoPtr pScrn)
 {
     SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
     SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
-    self->bHardwareCursorIsInUse = TRUE;
+
+    if (!self->bHardwareCursorIsInUse) {
+        DebugMsg("EnableHWCursor\n");
+        self->bHardwareCursorIsInUse = TRUE;
+    }
+
     UpdateOverlay(screenInfo.screens[pScrn->scrnIndex]);
-    DebugMsg("EnableHWCursor\n");
 
     if (self->EnableHWCursor) {
         hwc->EnableHWCursor = self->EnableHWCursor;
@@ -630,9 +652,13 @@ static void DisableHWCursor(ScrnInfoPtr pScrn)
 {
     SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
     SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
-    self->bHardwareCursorIsInUse = FALSE;
+
+    if (self->bHardwareCursorIsInUse) {
+        self->bHardwareCursorIsInUse = FALSE;
+        DebugMsg("DisableHWCursor\n");
+    }
+
     UpdateOverlay(screenInfo.screens[pScrn->scrnIndex]);
-    DebugMsg("DisableHWCursor\n");
 
     if (self->DisableHWCursor) {
         hwc->DisableHWCursor = self->DisableHWCursor;
