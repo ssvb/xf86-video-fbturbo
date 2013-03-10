@@ -45,9 +45,12 @@
 #include "xf86cmap.h"
 #include "shadow.h"
 #include "dgaproc.h"
+#include "exa.h"
 
+#include "fbdev_priv.h"
 #include "sunxi_disp.h"
 #include "sunxi_disp_hwcursor.h"
+#include "sw-exa.h"
 
 #ifdef HAVE_LIBUMP
 #include "sunxi_mali_ump_dri2.h"
@@ -215,10 +218,6 @@ FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
 #endif /* XFree86LOADER */
 
-/* -------------------------------------------------------------------- */
-/* our private data, and two functions to allocate/free this            */
-
-#include "fbdev_priv.h"
 
 static Bool
 FBDevGetRec(ScrnInfoPtr pScrn)
@@ -969,6 +968,18 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 #endif
 
+	/* EXA init */
+	xf86LoadSubModule(pScrn, "exa");
+
+	/* TODO: This should depend on the AccelMethod option */
+	fPtr->exa = exaDriverAlloc();
+	if (OMAPFBSetupExa(pScreen, fPtr)) {
+		exaDriverInit(pScreen, fPtr->exa);
+	} else {
+		free(fPtr->exa);
+		fPtr->exa = NULL;
+	}
+
 	TRACE_EXIT("FBDevScreenInit");
 
 	return TRUE;
@@ -979,6 +990,12 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	FBDevPtr fPtr = FBDEVPTR(pScrn);
+
+	if (fPtr->exa) {
+		exaDriverFini(pScreen);
+		free(fPtr->exa);
+		fPtr->exa = NULL;
+	}
 
 #ifdef HAVE_LIBUMP
 	if (fPtr->SunxiMaliDRI2_private) {

@@ -33,6 +33,8 @@ sunxifb_drv_la_SOURCES = \
          uthash.h \
          fbdev.c \
          fbdev_priv.h \
+         sw-exa.c \
+         sw-exa.h \
          sunxi_disp.c \
          sunxi_disp.h \
          sunxi_disp_hwcursor.c \

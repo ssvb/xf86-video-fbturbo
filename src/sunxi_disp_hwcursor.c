@@ -28,6 +28,7 @@
 #include "xf86.h"
 #include "xf86Cursor.h"
 #include "cursorstr.h"
+#include "exa.h"
 
 #include "sunxi_disp_hwcursor.h"
 #include "sunxi_disp.h"

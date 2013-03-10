@@ -30,6 +30,7 @@
  */
 
 #include "compat-api.h"
+#include "exa.h"
 
 typedef struct {
 	unsigned char*			fbstart;
@@ -47,6 +48,7 @@ typedef struct {
 	DGAModePtr			pDGAMode;
 	int				nDGAMode;
 	OptionInfoPtr			Options;
+	ExaDriverPtr			exa;
 
 	void				*sunxi_disp_private;;
 	void				*SunxiDispHardwareCursor_private;
