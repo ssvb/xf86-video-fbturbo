@@ -35,6 +35,7 @@
 #include <sys/ioctl.h>
 
 #include "xorgVersion.h"
+#include "xf86_OSproc.h"
 #include "xf86.h"
 #include "xf86drm.h"
 #include "dri2.h"
@@ -693,6 +694,11 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
             ump_id_fb = UMP_INVALID_SECURE_ID;
         }
     }
+
+    if (!xf86LoadKernelModule("mali"))
+        xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali' kernel module\n");
+    if (!xf86LoadKernelModule("mali_drm"))
+        xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali_drm' kernel module\n");
 
     if (!xf86LoadSubModule(xf86Screens[pScreen->myNum], "dri2"))
         return FALSE;
