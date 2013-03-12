@@ -996,7 +996,6 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 
 	if (fPtr->sunxi_disp_private) {
 	    sunxi_disp_close(fPtr->sunxi_disp_private);
-	    free(fPtr->sunxi_disp_private);
 	    fPtr->sunxi_disp_private = NULL;
 	}
 

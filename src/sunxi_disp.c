@@ -144,6 +144,7 @@ int sunxi_disp_close(sunxi_disp_t *ctx)
         close(ctx->fd_fb);
         close(ctx->fd_disp);
         ctx->fd_disp = -1;
+        free(ctx);
     }
     return 0;
 }
