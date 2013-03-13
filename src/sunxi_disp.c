@@ -32,6 +32,7 @@
 
 #include "sunxi_disp.h"
 #include "sunxi_disp_ioctl.h"
+#include "g2d_driver.h"
 
 /*****************************************************************************/
 
@@ -95,7 +96,8 @@ sunxi_disp_t *sunxi_disp_init(const char *device)
     ctx->bits_per_pixel = fb_var.bits_per_pixel;
     ctx->framebuffer_paddr = fb_fix.smem_start;
     ctx->framebuffer_size = fb_fix.smem_len;
-
+    ctx->framebuffer_height = ctx->framebuffer_size /
+                              (ctx->xres * ctx->bits_per_pixel / 8);
     ctx->gfx_layer_size = ctx->xres * ctx->yres * fb_var.bits_per_pixel / 8;
 
     if (ctx->framebuffer_size < ctx->gfx_layer_size) {
@@ -128,12 +130,17 @@ sunxi_disp_t *sunxi_disp_init(const char *device)
         return NULL;
     }
 
+    ctx->fd_g2d = open("/dev/g2d", O_RDWR);
+
     return ctx;
 }
 
 int sunxi_disp_close(sunxi_disp_t *ctx)
 {
     if (ctx->fd_disp >= 0) {
+        if (ctx->fd_g2d >= 0) {
+            close(ctx->fd_g2d);
+        }
         /* release layer */
         sunxi_layer_release(ctx);
         /* disable cursor */
@@ -358,4 +365,76 @@ int sunxi_layer_hide(sunxi_disp_t *ctx)
 int sunxi_wait_for_vsync(sunxi_disp_t *ctx)
 {
     return ioctl(ctx->fd_fb, FBIO_WAITFORVSYNC, 0);
+}
+
+/*****************************************************************************/
+
+int sunxi_g2d_fill_a8r8g8b8(sunxi_disp_t *disp,
+                            int           x,
+                            int           y,
+                            int           w,
+                            int           h,
+                            uint32_t      color)
+{
+    g2d_fillrect tmp;
+
+    if (disp->fd_g2d < 0)
+        return -1;
+
+    if (w <= 0 || h <= 0)
+        return 0;
+
+    tmp.flag                = G2D_FIL_NONE;
+    tmp.dst_image.addr[0]   = disp->framebuffer_paddr;
+    tmp.dst_image.w         = disp->xres;
+    tmp.dst_image.h         = disp->framebuffer_height;
+    tmp.dst_image.format    = G2D_FMT_ARGB_AYUV8888;
+    tmp.dst_image.pixel_seq = G2D_SEQ_NORMAL;
+    tmp.dst_rect.x          = x;
+    tmp.dst_rect.y          = y;
+    tmp.dst_rect.w          = w;
+    tmp.dst_rect.h          = h;
+    tmp.color               = color;
+    tmp.alpha               = 0;
+
+    return ioctl(disp->fd_g2d, G2D_CMD_FILLRECT, &tmp);
+}
+
+int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
+                            int           dst_x,
+                            int           dst_y,
+                            int           src_x,
+                            int           src_y,
+                            int           w,
+                            int           h)
+{
+    g2d_blt tmp;
+
+    if (disp->fd_g2d < 0)
+        return -1;
+
+    if (w <= 0 || h <= 0)
+        return 0;
+
+    tmp.flag                = G2D_BLT_NONE;
+    tmp.src_image.addr[0]   = disp->framebuffer_paddr;
+    tmp.src_image.w         = disp->xres;
+    tmp.src_image.h         = disp->framebuffer_height;
+    tmp.src_image.format    = G2D_FMT_ARGB_AYUV8888;
+    tmp.src_image.pixel_seq = G2D_SEQ_NORMAL;
+    tmp.src_rect.x          = src_x;
+    tmp.src_rect.y          = src_y;
+    tmp.src_rect.w          = w;
+    tmp.src_rect.h          = h;
+    tmp.dst_image.addr[0]   = disp->framebuffer_paddr;
+    tmp.dst_image.w         = disp->xres;
+    tmp.dst_image.h         = disp->framebuffer_height;
+    tmp.dst_image.format    = G2D_FMT_ARGB_AYUV8888;
+    tmp.dst_image.pixel_seq = G2D_SEQ_NORMAL;
+    tmp.dst_x               = dst_x;
+    tmp.dst_y               = dst_y;
+    tmp.color               = 0;
+    tmp.alpha               = 0;
+
+    return ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp);
 }

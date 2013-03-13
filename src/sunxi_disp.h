@@ -33,12 +33,14 @@
 typedef struct {
     int                 fd_fb;
     int                 fd_disp;
+    int                 fd_g2d;
     int                 fb_id;             /* /dev/fb0 = 0, /dev/fb1 = 1 */
 
     int                 xres, yres, bits_per_pixel;
     uint8_t            *framebuffer_addr;  /* mmapped address */
     uintptr_t           framebuffer_paddr; /* physical address */
     uint32_t            framebuffer_size;  /* total size of the framebuffer */
+    int                 framebuffer_height;/* virtual vertical resolution */
     uint32_t            gfx_layer_size;    /* the size of the primary layer */
 
     /* Hardware cursor support */
@@ -89,5 +91,24 @@ int sunxi_layer_hide(sunxi_disp_t *ctx);
  * Wait for vsync
  */
 int sunxi_wait_for_vsync(sunxi_disp_t *ctx);
+
+/*
+ * Simple G2D fill and blit operations
+ */
+
+int sunxi_g2d_fill_a8r8g8b8(sunxi_disp_t *disp,
+                            int           x,
+                            int           y,
+                            int           w,
+                            int           h,
+                            uint32_t      color);
+
+int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
+                            int           dst_x,
+                            int           dst_y,
+                            int           src_x,
+                            int           src_y,
+                            int           w,
+                            int           h);
 
 #endif
