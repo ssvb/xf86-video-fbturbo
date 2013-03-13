@@ -36,6 +36,8 @@
 
 #include "../src/sunxi_disp.h"
 
+static sunxi_disp_t *disp;
+
 void memset32(uint32_t *buf, uint32_t color, int n)
 {
     while (n--) {
@@ -43,19 +45,27 @@ void memset32(uint32_t *buf, uint32_t color, int n)
     }
 }
 
-void fill_framebuffer(void *buf_, int pitch, int height,
+void fill_framebuffer(void *buf_, int yoffs, int width, int height,
                       int bw_split_pos, uint32_t color)
 {
     uint32_t *buf = (uint32_t *)buf_;
-    int i;
-    while (height--) {
-        memset32(buf, color, bw_split_pos);
-        memset32(buf + bw_split_pos, 0x00, pitch - bw_split_pos);
-        buf += pitch;
+
+    if (disp->fd_g2d >= 0) {
+        sunxi_g2d_fill_a8r8g8b8(disp, 0, yoffs,
+                                bw_split_pos, height, color);
+        sunxi_g2d_fill_a8r8g8b8(disp, bw_split_pos, yoffs,
+                                width - bw_split_pos, height + yoffs, 0);
+    }
+    else {
+        buf += yoffs * width;
+        while (height--) {
+            memset32(buf, color, bw_split_pos);
+            memset32(buf + bw_split_pos, 0x00, width - bw_split_pos);
+            buf += width;
+        }
     }
 }
 
-static sunxi_disp_t *disp;
 
 void disp_destructor(int signum)
 {
@@ -83,8 +93,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    printf("disp->xres=%d, disp->yres=%d, disp_bits_per_pixel=%d\n",
-           disp->xres, disp->yres, disp->bits_per_pixel);
+    printf("disp->xres=%d, disp->yres=%d, disp_bits_per_pixel=%d, g2d_accel=%s\n",
+           disp->xres, disp->yres, disp->bits_per_pixel,
+           (disp->fd_g2d >= 0) ? "yes" : "no");
 
     if (disp->bits_per_pixel != 32) {
         printf("Sorry, only 32 bits per pixel is supported for now\n");
@@ -125,13 +136,13 @@ int main(int argc, char *argv[])
         pos = (pos + 16) % (disp->xres * 2);
 
         /* paint part of the screen with blue in the offscreen buffer */
-        fill_framebuffer(disp->framebuffer_addr + yoffs * disp->xres * 4,
+        fill_framebuffer(disp->framebuffer_addr, yoffs,
                          disp->xres, disp->yres,
                          pos < disp->xres ? pos : 2 * disp->xres - pos,
                          0xFF0000FF);
 
         /* paint part of the screen with yellow in the offscreen buffer */
-        fill_framebuffer(disp->framebuffer_addr + yoffs * disp->xres * 4,
+        fill_framebuffer(disp->framebuffer_addr, yoffs,
                          disp->xres, disp->yres,
                          pos < disp->xres ? pos : 2 * disp->xres - pos,
                          color);
@@ -140,7 +151,7 @@ int main(int argc, char *argv[])
         sunxi_layer_set_x8r8g8b8_input_buffer(disp, yoffs * disp->xres * 4,
                                               disp->xres, disp->yres, disp->xres);
         /* wait for the vsync itself */
-        ioctl(disp->fd_fb, FBIO_WAITFORVSYNC, 0);
+        sunxi_wait_for_vsync(disp);
 
         framenum++;
     }
