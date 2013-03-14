@@ -930,7 +930,8 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 #endif
 
 	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
-	                                fPtr->pEnt->device->options,"fbdev"));
+	                                fPtr->pEnt->device->options,"fbdev"),
+	                                fPtr->fbmem);
 
 	if (!fPtr->sunxi_disp_private)
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,

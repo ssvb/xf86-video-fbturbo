@@ -43,6 +43,8 @@ typedef struct {
     int                 framebuffer_height;/* virtual vertical resolution */
     uint32_t            gfx_layer_size;    /* the size of the primary layer */
 
+    uint8_t            *xserver_fbmem; /* framebuffer mapping done by xserver */
+
     /* Hardware cursor support */
     int                 cursor_enabled;
     int                 cursor_x, cursor_y;
@@ -52,7 +54,7 @@ typedef struct {
     int                 layer_has_scaler;
 } sunxi_disp_t;
 
-sunxi_disp_t *sunxi_disp_init(const char *fb_device);
+sunxi_disp_t *sunxi_disp_init(const char *fb_device, void *xserver_fbmem);
 int sunxi_disp_close(sunxi_disp_t *ctx);
 
 /*

@@ -36,7 +36,7 @@
 
 /*****************************************************************************/
 
-sunxi_disp_t *sunxi_disp_init(const char *device)
+sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
 {
     sunxi_disp_t *ctx = calloc(sizeof(sunxi_disp_t), 1);
     struct fb_var_screeninfo fb_var;
@@ -57,6 +57,9 @@ sunxi_disp_t *sunxi_disp_init(const char *device)
         free(ctx);
         return NULL;
     }
+
+    /* store the already existing mapping done by xserver */
+    ctx->xserver_fbmem = xserver_fbmem;
 
     ctx->fd_disp = open("/dev/disp", O_RDWR);
 
@@ -107,15 +110,21 @@ sunxi_disp_t *sunxi_disp_init(const char *device)
         return NULL;
     }
 
-    /* mmap framebuffer memory */
-    ctx->framebuffer_addr = (uint8_t *)mmap(0, ctx->framebuffer_size,
-                                            PROT_READ | PROT_WRITE,
-                                            MAP_SHARED, ctx->fd_fb, 0);
-    if (ctx->framebuffer_addr == MAP_FAILED) {
-        close(ctx->fd_fb);
-        close(ctx->fd_disp);
-        free(ctx);
-        return NULL;
+    if (ctx->xserver_fbmem) {
+        /* use already existing mapping */
+        ctx->framebuffer_addr = ctx->xserver_fbmem;
+    }
+    else {
+        /* mmap framebuffer memory */
+        ctx->framebuffer_addr = (uint8_t *)mmap(0, ctx->framebuffer_size,
+                                                PROT_READ | PROT_WRITE,
+                                                MAP_SHARED, ctx->fd_fb, 0);
+        if (ctx->framebuffer_addr == MAP_FAILED) {
+            close(ctx->fd_fb);
+            close(ctx->fd_disp);
+            free(ctx);
+            return NULL;
+        }
     }
 
     ctx->cursor_enabled = 0;
@@ -147,7 +156,8 @@ int sunxi_disp_close(sunxi_disp_t *ctx)
         if (ctx->cursor_enabled)
             sunxi_hw_cursor_hide(ctx);
         /* close descriptors */
-        munmap(ctx->framebuffer_addr, ctx->framebuffer_size);
+        if (!ctx->xserver_fbmem)
+            munmap(ctx->framebuffer_addr, ctx->framebuffer_size);
         close(ctx->fd_fb);
         close(ctx->fd_disp);
         ctx->fd_disp = -1;
