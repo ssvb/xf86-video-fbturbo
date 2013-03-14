@@ -51,12 +51,16 @@ typedef struct {
 	void				*sunxi_disp_private;;
 	void				*SunxiDispHardwareCursor_private;
 	void				*SunxiMaliDRI2_private;
+	void				*SunxiG2D_private;
 } FBDevRec, *FBDevPtr;
 
 #define FBDEVPTR(p) ((FBDevPtr)((p)->driverPrivate))
 
 #define SUNXI_DISP(p) ((sunxi_disp_t *) \
                        (FBDEVPTR(p)->sunxi_disp_private))
+
+#define SUNXI_G2D(p) ((SunxiG2D *) \
+                       (FBDEVPTR(p)->SunxiG2D_private))
 
 #define SUNXI_DISP_HWC(p) ((SunxiDispHardwareCursor *) \
                           (FBDEVPTR(p)->SunxiDispHardwareCursor_private))

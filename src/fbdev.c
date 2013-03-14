@@ -48,6 +48,7 @@
 
 #include "sunxi_disp.h"
 #include "sunxi_disp_hwcursor.h"
+#include "sunxi_x_g2d.h"
 
 #ifdef HAVE_LIBUMP
 #include "sunxi_mali_ump_dri2.h"
@@ -162,6 +163,7 @@ typedef enum {
 	OPTION_SW_CURSOR,
 	OPTION_DRI2,
 	OPTION_DRI2_OVERLAY,
+	OPTION_ACCELMETHOD,
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
@@ -173,6 +175,7 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_SW_CURSOR,	"SWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_DRI2,		"DRI2",		OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_DRI2_OVERLAY,	"DRI2HWOverlay",OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_ACCELMETHOD,	"AccelMethod",	OPTV_STRING,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -501,8 +504,9 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	memcpy(fPtr->Options, FBDevOptions, sizeof(FBDevOptions));
 	xf86ProcessOptions(pScrn->scrnIndex, fPtr->pEnt->device->options, fPtr->Options);
 
-	/* use shadow framebuffer by default */
-	fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options, OPTION_SHADOW_FB, TRUE);
+	/* use shadow framebuffer by default unless using HW acceleration */
+	fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options, OPTION_SHADOW_FB,
+				!xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD));
 
 	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
 
@@ -682,6 +686,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	int init_picture = 0;
 	int ret, flags;
 	int type;
+	char *accelmethod;
 
 	TRACE_ENTER("FBDevScreenInit");
 
@@ -848,6 +853,29 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
 
+	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
+	                                fPtr->pEnt->device->options,"fbdev"),
+	                                fPtr->fbmem);
+	if (!fPtr->sunxi_disp_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "failed to enable the use of sunxi display controller\n");
+
+	if ((accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) &&
+						strcasecmp(accelmethod, "g2d") == 0) {
+		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen))) {
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+				   "enabled G2D acceleration\n");
+		}
+		else {
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+				   "G2D hardware acceleration can't be enabled\n");
+		}
+	}
+	else {
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+			"no 2D acceleration selected via AccelMethod option\n");
+	}
+
 	if (fPtr->shadowFB && !FBDevShadowInit(pScreen)) {
 	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 		       "shadow framebuffer initialization failed\n");
@@ -929,14 +957,6 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 #endif
 
-	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
-	                                fPtr->pEnt->device->options,"fbdev"),
-	                                fPtr->fbmem);
-
-	if (!fPtr->sunxi_disp_private)
-		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-		           "failed to enable the use of sunxi display controller\n");
-
 	if (!xf86ReturnOptValBool(fPtr->Options, OPTION_SW_CURSOR, FALSE) &&
 	     xf86ReturnOptValBool(fPtr->Options, OPTION_HW_CURSOR, TRUE)) {
 
@@ -995,11 +1015,6 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	    fPtr->SunxiDispHardwareCursor_private = NULL;
 	}
 
-	if (fPtr->sunxi_disp_private) {
-	    sunxi_disp_close(fPtr->sunxi_disp_private);
-	    fPtr->sunxi_disp_private = NULL;
-	}
-
 	fbdevHWRestore(pScrn);
 	fbdevHWUnmapVidmem(pScrn);
 	if (fPtr->shadow) {
@@ -1007,6 +1022,17 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	    free(fPtr->shadow);
 	    fPtr->shadow = NULL;
 	}
+
+	if (fPtr->SunxiG2D_private) {
+	    SunxiG2D_Close(pScreen);
+	    free(fPtr->SunxiG2D_private);
+	    fPtr->SunxiG2D_private = NULL;
+	}
+	if (fPtr->sunxi_disp_private) {
+	    sunxi_disp_close(fPtr->sunxi_disp_private);
+	    fPtr->sunxi_disp_private = NULL;
+	}
+
 	if (fPtr->pDGAMode) {
 	  free(fPtr->pDGAMode);
 	  fPtr->pDGAMode = NULL;
