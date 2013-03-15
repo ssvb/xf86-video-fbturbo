@@ -215,5 +215,7 @@ int main(int argc, char *argv[])
 
     free(addr);
 
+    sunxi_disp_close(disp);
+
     return 0;
 }
