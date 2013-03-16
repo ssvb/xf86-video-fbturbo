@@ -701,17 +701,17 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali_drm' kernel module\n");
 
     if (!xf86LoadSubModule(xf86Screens[pScreen->myNum], "dri2"))
-        return FALSE;
+        return NULL;
 
     if ((drm_fd = drmOpen("mali_drm", NULL)) < 0) {
         ErrorF("SunxiMaliDRI2_Init: drmOpen failed!\n");
-        return FALSE;
+        return NULL;
     }
 
     if (ump_open() != UMP_OK) {
         drmClose(drm_fd);
         ErrorF("SunxiMaliDRI2_Init: ump_open() != UMP_OK\n");
-        return FALSE;
+        return NULL;
     }
 
     if (disp && ump_id_fb != UMP_INVALID_SECURE_ID)
