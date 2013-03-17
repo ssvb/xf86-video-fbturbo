@@ -984,7 +984,6 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		           "Mali binary drivers can only accelerate EGL/GLES\n");
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		           "so AIGLX/GLX is expected to fail or fallback to software\n");
-		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 	    }
 	    else {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
