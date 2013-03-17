@@ -977,17 +977,29 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	    fPtr->SunxiMaliDRI2_private = SunxiMaliDRI2_Init(pScreen,
 		xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2_OVERLAY, TRUE));
 
-	    if (fPtr->SunxiMaliDRI2_private)
+	    if (fPtr->SunxiMaliDRI2_private) {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		           "using DRI2 integration for Mali GPU (UMP buffers)\n");
-	    else
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "Mali binary drivers can only accelerate EGL/GLES\n");
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "so AIGLX/GLX is expected to fail or fallback to software\n");
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+	    }
+	    else {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		           "failed to enable DRI2 integration for Mali GPU\n");
+	    }
 	}
 	else {
 	    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 	               "DRI2 integration for Mali GPU is disabled in xorg.conf\n");
 	}
+#else
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+	           "no 3D acceleration because the driver has been compiled without libUMP\n");
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+	           "if this is wrong and needs to be fixed, please check ./configure log\n");
 #endif
 
 	TRACE_EXIT("FBDevScreenInit");
