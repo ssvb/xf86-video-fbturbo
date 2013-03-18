@@ -25,7 +25,10 @@
 #define SUNXI_X_G2D_H
 
 typedef struct {
+    GCOps                  *pGCOps;
+
     CopyWindowProcPtr       CopyWindow;
+    CreateGCProcPtr         CreateGC;
 } SunxiG2D;
 
 SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen);

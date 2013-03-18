@@ -25,6 +25,8 @@
 #include "config.h"
 #endif
 
+#include <pixman.h>
+
 #include "xorgVersion.h"
 #include "xf86_OSproc.h"
 #include "xf86.h"
@@ -67,7 +69,8 @@ xCopyWindowProc(DrawablePtr pSrcDrawable,
     fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 
     if (srcBpp == 32 && dstBpp == 32 &&
-        disp->framebuffer_addr == src && disp->framebuffer_addr == dst &&
+        disp->framebuffer_addr == (void *)src &&
+        disp->framebuffer_addr == (void *)dst &&
         (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff))
     {
         while (nbox--) {
@@ -127,6 +130,118 @@ xCopyWindow(WindowPtr pWin, DDXPointRec ptOldOrg, RegionPtr prgnSrc)
     fbValidateDrawable(&pWin->drawable);
 }
 
+/*****************************************************************************/
+
+static void
+xCopyNtoN(DrawablePtr pSrcDrawable,
+          DrawablePtr pDstDrawable,
+          GCPtr pGC,
+          BoxPtr pbox,
+          int nbox,
+          int dx,
+          int dy,
+          Bool reverse, Bool upsidedown, Pixel bitplane, void *closure)
+{
+    CARD8 alu = pGC ? pGC->alu : GXcopy;
+    FbBits pm = pGC ? fbGetGCPrivate(pGC)->pm : FB_ALLONES;
+    FbBits *src;
+    FbStride srcStride;
+    int srcBpp;
+    int srcXoff, srcYoff;
+    FbBits *dst;
+    FbStride dstStride;
+    int dstBpp;
+    int dstXoff, dstYoff;
+    ScreenPtr pScreen = pDstDrawable->pScreen;
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
+    Bool use_g2d;
+
+    fbGetDrawable(pSrcDrawable, src, srcStride, srcBpp, srcXoff, srcYoff);
+    fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
+
+    use_g2d = disp->framebuffer_addr == (void *)src &&
+              disp->framebuffer_addr == (void *)dst &&
+              (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff);
+
+    while (nbox--) {
+        if (use_g2d) {
+            sunxi_g2d_blit_a8r8g8b8(disp,
+                pbox->x1 + dstXoff, pbox->y1 + dstYoff,
+                pbox->x1 + dx + srcXoff, pbox->y1 + dy + srcYoff,
+                pbox->x2 - pbox->x1,
+                pbox->y2 - pbox->y1);
+        }
+        else if (!reverse && !upsidedown) {
+            pixman_blt((uint32_t *) src, (uint32_t *) dst, srcStride, dstStride,
+                 srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
+                 (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
+                 (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
+                 (pbox->y2 - pbox->y1));
+        }
+        else {
+            fbBlt(src + (pbox->y1 + dy + srcYoff) * srcStride,
+                  srcStride,
+                  (pbox->x1 + dx + srcXoff) * srcBpp,
+                  dst + (pbox->y1 + dstYoff) * dstStride,
+                  dstStride,
+                  (pbox->x1 + dstXoff) * dstBpp,
+                  (pbox->x2 - pbox->x1) * dstBpp,
+                  (pbox->y2 - pbox->y1), alu, pm, dstBpp, reverse, upsidedown);
+        }
+        pbox++;
+    }
+
+    fbFinishAccess(pDstDrawable);
+    fbFinishAccess(pSrcDrawable);
+}
+
+static RegionPtr
+xCopyArea(DrawablePtr pSrcDrawable,
+         DrawablePtr pDstDrawable,
+         GCPtr pGC,
+         int xIn, int yIn, int widthSrc, int heightSrc, int xOut, int yOut)
+{
+    CARD8 alu = pGC ? pGC->alu : GXcopy;
+    FbBits pm = pGC ? fbGetGCPrivate(pGC)->pm : FB_ALLONES;
+
+    if (pm == FB_ALLONES && alu == GXcopy && 
+        pSrcDrawable->bitsPerPixel == pDstDrawable->bitsPerPixel &&
+        pSrcDrawable->bitsPerPixel == 32)
+    {
+        return miDoCopy(pSrcDrawable, pDstDrawable, pGC, xIn, yIn,
+                    widthSrc, heightSrc, xOut, yOut, xCopyNtoN, 0, 0);
+    }
+    return fbCopyArea(pSrcDrawable,
+                      pDstDrawable,
+                      pGC,
+                      xIn, yIn, widthSrc, heightSrc, xOut, yOut);
+}
+
+static Bool
+xCreateGC(GCPtr pGC)
+{
+    ScreenPtr pScreen = pGC->pScreen;
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    SunxiG2D *self = SUNXI_G2D(pScrn);
+    Bool result;
+
+    if (!fbCreateGC(pGC))
+        return FALSE;
+
+    if (!self->pGCOps) {
+        self->pGCOps = calloc(1, sizeof(GCOps));
+        memcpy(self->pGCOps, pGC->ops, sizeof(GCOps));
+
+        /* Add our own hook for CopyArea function */
+        self->pGCOps->CopyArea = xCopyArea;
+    }
+    pGC->ops = self->pGCOps;
+
+    return TRUE;
+}
+
+/*****************************************************************************/
 
 SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen)
 {
@@ -151,6 +266,10 @@ SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen)
     private->CopyWindow = pScreen->CopyWindow;
     pScreen->CopyWindow = xCopyWindow;
 
+    /* Wrap the current CreateGC function */
+    private->CreateGC = pScreen->CreateGC;
+    pScreen->CreateGC = xCreateGC;
+
     return private;
 }
 
@@ -160,4 +279,9 @@ void SunxiG2D_Close(ScreenPtr pScreen)
     SunxiG2D *private = SUNXI_G2D(pScrn);
 
     pScreen->CopyWindow = private->CopyWindow;
+    pScreen->CreateGC   = private->CreateGC;
+
+    if (private->pGCOps) {
+        free(private->pGCOps);
+    }
 }
