@@ -271,6 +271,16 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
 
     layer_info.mode = DISP_LAYER_WORK_MODE_SCALER;
 
+    /* Initially set "layer_info.fb" to something reasonable in order to avoid
+     * "[DISP] not supported scaler input pixel format:0 in Scaler_sw_para_to_reg1"
+     * warning in dmesg log */
+    layer_info.fb.addr[0] = ctx->framebuffer_paddr;
+    layer_info.fb.size.width = 1;
+    layer_info.fb.size.height = 1;
+    layer_info.fb.format = DISP_FORMAT_ARGB8888;
+    layer_info.fb.seq = DISP_SEQ_ARGB;
+    layer_info.fb.mode = DISP_MOD_INTERLEAVED;
+
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
     tmp[2] = (uintptr_t)&layer_info;
