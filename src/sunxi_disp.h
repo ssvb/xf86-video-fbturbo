@@ -113,4 +113,19 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
                             int           w,
                             int           h);
 
+/* G2D counterpart for pixman_blt with the support for 16bpp and 32bpp */
+int sunxi_g2d_blt(sunxi_disp_t       *disp,
+                  uint32_t           *src_bits,
+                  uint32_t           *dst_bits,
+                  int                 src_stride,
+                  int                 dst_stride,
+                  int                 src_bpp,
+                  int                 dst_bpp,
+                  int                 src_x,
+                  int                 src_y,
+                  int                 dst_x,
+                  int                 dst_y,
+                  int                 w,
+                  int                 h);
+
 #endif

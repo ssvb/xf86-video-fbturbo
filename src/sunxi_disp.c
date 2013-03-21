@@ -458,3 +458,90 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
 
     return ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp);
 }
+
+/*
+ * G2D counterpart for pixman_blt (function arguments are the same with
+ * only sunxi_disp_t extra argument added). Supports 16bpp (r5g6b5) and
+ * 32bpp (a8r8g8b8) formats and also conversion between them.
+ *
+ * Can do G2D accelerated blits only if both source and destination
+ * buffers are inside framebuffer. Returns FALSE (0) otherwise.
+ */
+int sunxi_g2d_blt(sunxi_disp_t       *disp,
+                  uint32_t           *src_bits,
+                  uint32_t           *dst_bits,
+                  int                 src_stride,
+                  int                 dst_stride,
+                  int                 src_bpp,
+                  int                 dst_bpp,
+                  int                 src_x,
+                  int                 src_y,
+                  int                 dst_x,
+                  int                 dst_y,
+                  int                 w,
+                  int                 h)
+{
+    g2d_blt tmp;
+    /*
+     * Very minimal validation here. We just assume that if the begginging
+     * of both source and destination images belongs to the framebuffer,
+     * then these images are entirely residing inside the framebuffer
+     * without crossing its borders. Any other checks are supposed
+     * to be done by the caller.
+     */
+    if ((uint8_t *)src_bits < disp->framebuffer_addr ||
+        (uint8_t *)src_bits >= disp->framebuffer_addr + disp->framebuffer_size ||
+        (uint8_t *)dst_bits < disp->framebuffer_addr ||
+        (uint8_t *)dst_bits >= disp->framebuffer_addr + disp->framebuffer_size)
+    {
+        return 0;
+    }
+
+    if (w <= 0 || h <= 0)
+        return 1;
+
+    if (disp->fd_g2d < 0)
+        return 0;
+
+    if ((src_bpp != 16 && src_bpp != 32) || (dst_bpp != 16 && dst_bpp != 32))
+        return 0;
+
+    tmp.flag                    = G2D_BLT_NONE;
+    tmp.src_image.addr[0]       = disp->framebuffer_paddr +
+                                  ((uint8_t *)src_bits - disp->framebuffer_addr);
+    tmp.src_rect.x              = src_x;
+    tmp.src_rect.y              = src_y;
+    tmp.src_rect.w              = w;
+    tmp.src_rect.h              = h;
+    tmp.src_image.h             = src_y + h;
+    if (src_bpp == 32) {
+        tmp.src_image.w         = src_stride;
+        tmp.src_image.format    = G2D_FMT_ARGB_AYUV8888;
+        tmp.src_image.pixel_seq = G2D_SEQ_NORMAL;
+    }
+    else if (src_bpp == 16) {
+        tmp.src_image.w         = src_stride * 2;
+        tmp.src_image.format    = G2D_FMT_RGB565;
+        tmp.src_image.pixel_seq = G2D_SEQ_P10;
+    }
+
+    tmp.dst_image.addr[0]       = disp->framebuffer_paddr +
+                                  ((uint8_t *)dst_bits - disp->framebuffer_addr);
+    tmp.dst_x                   = dst_x;
+    tmp.dst_y                   = dst_y;
+    tmp.color                   = 0;
+    tmp.alpha                   = 0;
+    tmp.dst_image.h             = dst_y + h;
+    if (dst_bpp == 32) {
+        tmp.dst_image.w         = dst_stride;
+        tmp.dst_image.format    = G2D_FMT_ARGB_AYUV8888;
+        tmp.dst_image.pixel_seq = G2D_SEQ_NORMAL;
+    }
+    else if (dst_bpp == 16) {
+        tmp.dst_image.w         = dst_stride * 2;
+        tmp.dst_image.format    = G2D_FMT_RGB565;
+        tmp.dst_image.pixel_seq = G2D_SEQ_P10;
+    }
+
+    return ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp) == 0;
+}

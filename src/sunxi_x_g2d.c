@@ -74,11 +74,12 @@ xCopyWindowProc(DrawablePtr pSrcDrawable,
         (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff))
     {
         while (nbox--) {
-            sunxi_g2d_blit_a8r8g8b8(disp,
-                pbox->x1 + dstXoff, pbox->y1 + dstYoff,
-                pbox->x1 + dx + srcXoff, pbox->y1 + dy + srcYoff,
-                pbox->x2 - pbox->x1,
-                pbox->y2 - pbox->y1);
+            sunxi_g2d_blt(disp, (uint32_t *)src, (uint32_t *)dst,
+                          srcStride, dstStride,
+                          srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
+                          (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
+                          (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
+                          (pbox->y2 - pbox->y1));
             pbox++;
         }
     }
@@ -155,31 +156,38 @@ xCopyNtoN(DrawablePtr pSrcDrawable,
     ScreenPtr pScreen = pDstDrawable->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     sunxi_disp_t *disp = SUNXI_DISP(pScrn);
-    Bool use_g2d;
+    Bool bad_overlapping_for_g2d;
 
     fbGetDrawable(pSrcDrawable, src, srcStride, srcBpp, srcXoff, srcYoff);
     fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 
-    use_g2d = disp->framebuffer_addr == (void *)src &&
-              disp->framebuffer_addr == (void *)dst &&
-              (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff);
+    bad_overlapping_for_g2d = (src == dst) && (dy + srcYoff == dstYoff) &&
+                              (dx + srcXoff + 1 < dstXoff);
 
     while (nbox--) {
-        if (use_g2d) {
-            sunxi_g2d_blit_a8r8g8b8(disp,
-                pbox->x1 + dstXoff, pbox->y1 + dstYoff,
-                pbox->x1 + dx + srcXoff, pbox->y1 + dy + srcYoff,
-                pbox->x2 - pbox->x1,
-                pbox->y2 - pbox->y1);
+        Bool done = FALSE;
+
+        /* first try G2D */
+        if (!bad_overlapping_for_g2d) {
+            done = sunxi_g2d_blt(disp, (uint32_t *)src, (uint32_t *)dst,
+                                 srcStride, dstStride,
+                                 srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
+                                 (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
+                                 (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
+                                 (pbox->y2 - pbox->y1));
         }
-        else if (!reverse && !upsidedown) {
-            pixman_blt((uint32_t *) src, (uint32_t *) dst, srcStride, dstStride,
+
+        /* then pixman (NEON) */
+        if (!done && !reverse && !upsidedown) {
+            done = pixman_blt((uint32_t *)src, (uint32_t *)dst, srcStride, dstStride,
                  srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
                  (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
                  (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
                  (pbox->y2 - pbox->y1));
         }
-        else {
+
+        /* fallback to fbBlt if other methods did not work */
+        if (!done) {
             fbBlt(src + (pbox->y1 + dy + srcYoff) * srcStride,
                   srcStride,
                   (pbox->x1 + dx + srcXoff) * srcBpp,
