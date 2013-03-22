@@ -853,6 +853,11 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
 
+	/* try to load G2D kernel module before initializing sunxi-disp */
+	if (!xf86LoadKernelModule("g2d_23"))
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "can't load 'g2d_23' kernel module\n");
+
 	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
 	                                fPtr->pEnt->device->options,"fbdev"),
 	                                fPtr->fbmem);
