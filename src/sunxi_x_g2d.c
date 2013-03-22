@@ -68,7 +68,7 @@ xCopyWindowProc(DrawablePtr pSrcDrawable,
     fbGetDrawable(pSrcDrawable, src, srcStride, srcBpp, srcXoff, srcYoff);
     fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 
-    if (srcBpp == 32 && dstBpp == 32 &&
+    if (srcBpp == dstBpp && (srcBpp == 32 || srcBpp == 16) &&
         disp->framebuffer_addr == (void *)src &&
         disp->framebuffer_addr == (void *)dst &&
         (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff))
@@ -215,7 +215,7 @@ xCopyArea(DrawablePtr pSrcDrawable,
 
     if (pm == FB_ALLONES && alu == GXcopy && 
         pSrcDrawable->bitsPerPixel == pDstDrawable->bitsPerPixel &&
-        pSrcDrawable->bitsPerPixel == 32)
+        (pSrcDrawable->bitsPerPixel == 32 || pSrcDrawable->bitsPerPixel == 16))
     {
         return miDoCopy(pSrcDrawable, pDstDrawable, pGC, xIn, yIn,
                     widthSrc, heightSrc, xOut, yOut, xCopyNtoN, 0, 0);
