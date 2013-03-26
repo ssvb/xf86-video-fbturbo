@@ -187,10 +187,3 @@ void cpuinfo_close(cpuinfo_t *cpuinfo)
     free(cpuinfo->processor_name);
     free(cpuinfo);
 }
-
-int main()
-{
-    cpuinfo_t *cpuinfo = cpuinfo_init();
-    printf("%s %d\n", cpuinfo->processor_name, cpuinfo->has_arm_neon);
-    return 0;
-}
