@@ -141,6 +141,9 @@ sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
 
     ctx->fd_g2d = open("/dev/g2d", O_RDWR);
 
+    ctx->blt2d.self = ctx;
+    ctx->blt2d.overlapped_blt = sunxi_g2d_blt;
+
     return ctx;
 }
 
@@ -467,7 +470,7 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
  * Can do G2D accelerated blits only if both source and destination
  * buffers are inside framebuffer. Returns FALSE (0) otherwise.
  */
-int sunxi_g2d_blt(sunxi_disp_t       *disp,
+int sunxi_g2d_blt(void               *self,
                   uint32_t           *src_bits,
                   uint32_t           *dst_bits,
                   int                 src_stride,
@@ -481,6 +484,7 @@ int sunxi_g2d_blt(sunxi_disp_t       *disp,
                   int                 w,
                   int                 h)
 {
+    sunxi_disp_t *disp = (sunxi_disp_t *)self;
     g2d_blt tmp;
     /*
      * Very minimal validation here. We just assume that if the begginging
@@ -499,6 +503,10 @@ int sunxi_g2d_blt(sunxi_disp_t       *disp,
 
     if (w <= 0 || h <= 0)
         return 1;
+
+    /* Unsupported overlapping type */
+    if (src_bits == dst_bits && src_y == dst_y && src_x + 1 < dst_x)
+        return 0;
 
     if (disp->fd_g2d < 0)
         return 0;

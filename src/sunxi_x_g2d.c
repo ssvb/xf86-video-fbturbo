@@ -36,7 +36,6 @@
 #include "fb.h"
 
 #include "fbdev_priv.h"
-#include "sunxi_disp.h"
 #include "sunxi_x_g2d.h"
 
 /*
@@ -63,28 +62,20 @@ xCopyWindowProc(DrawablePtr pSrcDrawable,
     int dstXoff, dstYoff;
     ScreenPtr pScreen = pDstDrawable->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
+    SunxiG2D *private = SUNXI_G2D(pScrn);
 
     fbGetDrawable(pSrcDrawable, src, srcStride, srcBpp, srcXoff, srcYoff);
     fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 
-    if (srcBpp == dstBpp && (srcBpp == 32 || srcBpp == 16) &&
-        disp->framebuffer_addr == (void *)src &&
-        disp->framebuffer_addr == (void *)dst &&
-        (dy + srcYoff != dstYoff || dx + srcXoff + 1 >= dstXoff))
-    {
-        while (nbox--) {
-            sunxi_g2d_blt(disp, (uint32_t *)src, (uint32_t *)dst,
-                          srcStride, dstStride,
-                          srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
-                          (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
-                          (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
-                          (pbox->y2 - pbox->y1));
-            pbox++;
-        }
-    }
-    else {
-        while (nbox--) {
+    while (nbox--) {
+        if (!private->blt2d_overlapped_blt(private->blt2d_self,
+                                           (uint32_t *)src, (uint32_t *)dst,
+                                           srcStride, dstStride,
+                                           srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
+                                           (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
+                                           (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
+                                           (pbox->y2 - pbox->y1))) {
+            /* fallback to fbBlt */
             fbBlt(src + (pbox->y1 + dy + srcYoff) * srcStride,
                   srcStride,
                   (pbox->x1 + dx + srcXoff) * srcBpp,
@@ -93,9 +84,9 @@ xCopyWindowProc(DrawablePtr pSrcDrawable,
                   (pbox->x1 + dstXoff) * dstBpp,
                   (pbox->x2 - pbox->x1) * dstBpp,
                   (pbox->y2 - pbox->y1),
-              GXcopy, FB_ALLONES, dstBpp, reverse, upsidedown);
-            pbox++;
+                  GXcopy, FB_ALLONES, dstBpp, reverse, upsidedown);
         }
+        pbox++;
     }
 
     fbFinishAccess(pDstDrawable);
@@ -155,27 +146,21 @@ xCopyNtoN(DrawablePtr pSrcDrawable,
     int dstXoff, dstYoff;
     ScreenPtr pScreen = pDstDrawable->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
-    Bool bad_overlapping_for_g2d;
+    SunxiG2D *private = SUNXI_G2D(pScrn);
 
     fbGetDrawable(pSrcDrawable, src, srcStride, srcBpp, srcXoff, srcYoff);
     fbGetDrawable(pDstDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 
-    bad_overlapping_for_g2d = (src == dst) && (dy + srcYoff == dstYoff) &&
-                              (dx + srcXoff + 1 < dstXoff);
-
     while (nbox--) {
-        Bool done = FALSE;
-
         /* first try G2D */
-        if (!bad_overlapping_for_g2d) {
-            done = sunxi_g2d_blt(disp, (uint32_t *)src, (uint32_t *)dst,
-                                 srcStride, dstStride,
-                                 srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
-                                 (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
-                                 (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
-                                 (pbox->y2 - pbox->y1));
-        }
+        Bool done = private->blt2d_overlapped_blt(
+                             private->blt2d_self,
+                             (uint32_t *)src, (uint32_t *)dst,
+                             srcStride, dstStride,
+                             srcBpp, dstBpp, (pbox->x1 + dx + srcXoff),
+                             (pbox->y1 + dy + srcYoff), (pbox->x1 + dstXoff),
+                             (pbox->y1 + dstYoff), (pbox->x2 - pbox->x1),
+                             (pbox->y2 - pbox->y1));
 
         /* then pixman (NEON) */
         if (!done && !reverse && !upsidedown) {
@@ -251,24 +236,18 @@ xCreateGC(GCPtr pGC)
 
 /*****************************************************************************/
 
-SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen)
+SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen, blt2d_i *blt2d)
 {
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
-    SunxiG2D *private;
-
-    if (!disp || disp->fd_g2d < 0) {
-        xf86DrvMsg(pScreen->myNum, X_INFO,
-            "No sunxi-g2d hardware detected (check /dev/disp and /dev/g2d)\n");
-        return NULL;
-    }
-
-    private = calloc(1, sizeof(SunxiG2D));
+    SunxiG2D *private = calloc(1, sizeof(SunxiG2D));
     if (!private) {
         xf86DrvMsg(pScreen->myNum, X_INFO,
             "SunxiG2D_Init: calloc failed\n");
         return NULL;
     }
+
+    /* Cache the pointers from blt2d_i here */
+    private->blt2d_self = blt2d->self;
+    private->blt2d_overlapped_blt = blt2d->overlapped_blt;
 
     /* Wrap the current CopyWindow function */
     private->CopyWindow = pScreen->CopyWindow;

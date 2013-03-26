@@ -33,6 +33,7 @@ sunxifb_drv_la_SOURCES = \
          uthash.h \
          cpuinfo.c \
          cpuinfo.h \
+         interfaces.h \
          fbdev.c \
          fbdev_priv.h \
          sunxi_disp.c \

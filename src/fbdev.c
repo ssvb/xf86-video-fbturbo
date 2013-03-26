@@ -867,13 +867,17 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 
 	if ((accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) &&
 						strcasecmp(accelmethod, "g2d") == 0) {
-		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen))) {
-			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-				   "enabled G2D acceleration\n");
+		sunxi_disp_t *disp = fPtr->sunxi_disp_private;
+		if (disp && disp->fd_g2d >= 0 &&
+		    (fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &disp->blt2d))) {
+
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO, "enabled G2D acceleration\n");
 		}
 		else {
+			xf86DrvMsg(pScreen->myNum, X_INFO,
+				"No sunxi-g2d hardware detected (check /dev/disp and /dev/g2d)\n");
 			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-				   "G2D hardware acceleration can't be enabled\n");
+				"G2D hardware acceleration can't be enabled\n");
 		}
 	}
 	else {

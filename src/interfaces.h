@@ -21,35 +21,30 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SUNXI_X_G2D_H
-#define SUNXI_X_G2D_H
+#ifndef INTERFACES_H
+#define INTERFACES_H
 
-#include "interfaces.h"
-
+/* A simple interface for 2D graphics operations */
 typedef struct {
-    GCOps                  *pGCOps;
-
-    CopyWindowProcPtr       CopyWindow;
-    CreateGCProcPtr         CreateGC;
-
-    /* SunxiG2D_Init copies these pointers here from blt2d_i struct */
-    void *blt2d_self;
-    int (*blt2d_overlapped_blt)(void     *self,
-                                uint32_t *src_bits,
-                                uint32_t *dst_bits,
-                                int       src_stride,
-                                int       dst_stride,
-                                int       src_bpp,
-                                int       dst_bpp,
-                                int       src_x,
-                                int       src_y,
-                                int       dst_x,
-                                int       dst_y,
-                                int       w,
-                                int       h);
-} SunxiG2D;
-
-SunxiG2D *SunxiG2D_Init(ScreenPtr pScreen, blt2d_i *blt2d);
-void SunxiG2D_Close(ScreenPtr pScreen);
+    void *self; /* The pointer which needs to be passed to functions */
+    /*
+     * A counterpart for "pixman_blt", which supports overlapped copies.
+     * Except for the new "self" pointer, the rest of arguments are
+     * exactly the same.
+     */
+    int (*overlapped_blt)(void     *self,
+                          uint32_t *src_bits,
+                          uint32_t *dst_bits,
+                          int       src_stride,
+                          int       dst_stride,
+                          int       src_bpp,
+                          int       dst_bpp,
+                          int       src_x,
+                          int       src_y,
+                          int       dst_x,
+                          int       dst_y,
+                          int       w,
+                          int       h);
+} blt2d_i;
 
 #endif

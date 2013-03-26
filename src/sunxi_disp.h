@@ -26,6 +26,8 @@
 
 #include <inttypes.h>
 
+#include "interfaces.h"
+
 /*
  * Support for Allwinner A10 display controller features such as layers
  * and hardware cursor
@@ -52,6 +54,9 @@ typedef struct {
     /* Layers support */
     int                 layer_id;
     int                 layer_has_scaler;
+
+    /* G2D accelerated implementation of blt2d_i interface */
+    blt2d_i             blt2d;
 } sunxi_disp_t;
 
 sunxi_disp_t *sunxi_disp_init(const char *fb_device, void *xserver_fbmem);
@@ -114,7 +119,7 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
                             int           h);
 
 /* G2D counterpart for pixman_blt with the support for 16bpp and 32bpp */
-int sunxi_g2d_blt(sunxi_disp_t       *disp,
+int sunxi_g2d_blt(void               *disp,
                   uint32_t           *src_bits,
                   uint32_t           *dst_bits,
                   int                 src_stride,
