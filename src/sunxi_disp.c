@@ -46,6 +46,10 @@ sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
     int gfx_layer_size;
     int ovl_layer_size;
 
+    /* use /dev/fb0 by default */
+    if (!device)
+        device = "/dev/fb0";
+
     if (strcmp(device, "/dev/fb0") == 0) {
         ctx->fb_id = 0;
     }
