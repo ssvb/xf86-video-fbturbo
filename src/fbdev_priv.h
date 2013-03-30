@@ -48,6 +48,7 @@ typedef struct {
 	int				nDGAMode;
 	OptionInfoPtr			Options;
 
+	void				*cpu_backend_private;
 	void				*sunxi_disp_private;;
 	void				*SunxiDispHardwareCursor_private;
 	void				*SunxiMaliDRI2_private;

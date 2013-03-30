@@ -31,8 +31,11 @@ sunxifb_drv_ladir = @moduledir@/drivers
 sunxifb_drv_la_SOURCES = \
          compat-api.h \
          uthash.h \
+         arm_asm.S \
          cpuinfo.c \
          cpuinfo.h \
+         cpu_backend.c \
+         cpu_backend.h \
          interfaces.h \
          fbdev.c \
          fbdev_priv.h \

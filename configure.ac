@@ -40,6 +40,9 @@ m4_ifndef([XORG_MACROS_VERSION],
 XORG_MACROS_VERSION(1.8)
 XORG_DEFAULT_OPTIONS
 
+# Needed to compile assembly sources
+AM_PROG_AS
+
 # Initialize libtool
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL

@@ -46,6 +46,8 @@
 #include "shadow.h"
 #include "dgaproc.h"
 
+#include "cpu_backend.h"
+
 #include "sunxi_disp.h"
 #include "sunxi_disp_hwcursor.h"
 #include "sunxi_x_g2d.h"
@@ -421,6 +423,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	int default_depth, fbbpp;
 	const char *s;
 	int type;
+	cpuinfo_t *cpuinfo;
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -504,9 +507,18 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	memcpy(fPtr->Options, FBDevOptions, sizeof(FBDevOptions));
 	xf86ProcessOptions(pScrn->scrnIndex, fPtr->pEnt->device->options, fPtr->Options);
 
-	/* use shadow framebuffer by default unless using HW acceleration */
+	/* check the processor type */
+	cpuinfo = cpuinfo_init();
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "processor: %s\n",
+	           cpuinfo->processor_name);
+	/* don't use shadow by default if we have NEON or HW acceleration */
+	fPtr->shadowFB = !cpuinfo->has_arm_neon &&
+	                 !xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD);
+	cpuinfo_close(cpuinfo);
+
+	/* but still honour the settings from xorg.conf */
 	fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options, OPTION_SHADOW_FB,
-				!xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD));
+					      fPtr->shadowFB);
 
 	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
 
@@ -687,6 +699,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	int ret, flags;
 	int type;
 	char *accelmethod;
+	cpu_backend_t *cpu_backend;
 
 	TRACE_ENTER("FBDevScreenInit");
 
@@ -853,6 +866,10 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
 
+	/* initialize the 'CPU' backend */
+	cpu_backend = cpu_backend_init(fPtr->fbmem, pScrn->videoRam);
+	fPtr->cpu_backend_private = cpu_backend;
+
 	/* try to load G2D kernel module before initializing sunxi-disp */
 	if (!xf86LoadKernelModule("g2d_23"))
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
@@ -883,6 +900,12 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	else {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			"no 2D acceleration selected via AccelMethod option\n");
+	}
+
+	if (!fPtr->SunxiG2D_private && cpu_backend->cpuinfo->has_arm_neon) {
+		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &cpu_backend->blt2d))) {
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO, "enabled NEON optimizations\n");
+		}
 	}
 
 	if (fPtr->shadowFB && !FBDevShadowInit(pScreen)) {
@@ -1051,6 +1074,10 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	if (fPtr->sunxi_disp_private) {
 	    sunxi_disp_close(fPtr->sunxi_disp_private);
 	    fPtr->sunxi_disp_private = NULL;
+	}
+	if (fPtr->cpu_backend_private) {
+	    cpu_backend_close(fPtr->cpu_backend_private);
+	    fPtr->cpu_backend_private = NULL;
 	}
 
 	if (fPtr->pDGAMode) {
