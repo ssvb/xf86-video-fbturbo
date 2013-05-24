@@ -489,6 +489,7 @@ int sunxi_g2d_blt(void               *self,
                   int                 h)
 {
     sunxi_disp_t *disp = (sunxi_disp_t *)self;
+    int blt_size_threshold;
     g2d_blt tmp;
     /*
      * Very minimal validation here. We just assume that if the begginging
@@ -507,6 +508,18 @@ int sunxi_g2d_blt(void               *self,
 
     if (w <= 0 || h <= 0)
         return 1;
+
+    /*
+     * If the area is smaller than G2D_BLT_SIZE_THRESHOLD, prefer to avoid the
+     * overhead of G2D and do a CPU blit instead. There is a special threshold
+     * for 16bpp to 16bpp copy.
+     */
+    if (src_bpp == 16 && dst_bpp == 16)
+        blt_size_threshold = G2D_BLT_SIZE_THRESHOLD_16BPP;
+    else
+        blt_size_threshold = G2D_BLT_SIZE_THRESHOLD;
+    if (w * h < blt_size_threshold)
+        return 0;
 
     /* Unsupported overlapping type */
     if (src_bits == dst_bits && src_y == dst_y && src_x + 1 < dst_x)

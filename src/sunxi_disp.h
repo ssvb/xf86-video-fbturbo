@@ -118,6 +118,15 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
                             int           w,
                             int           h);
 
+/*
+ * The following constants are used sunxi_disp.c and represent
+ * the area threshold below which the sunxi_g2d_blit function will
+ * return 0, indicating that a software blit is preferred. The
+ * 16BPP constant applies to 16bpp to 16bpp blit.
+ */
+#define G2D_BLT_SIZE_THRESHOLD 1000
+#define G2D_BLT_SIZE_THRESHOLD_16BPP 2500
+
 /* G2D counterpart for pixman_blt with the support for 16bpp and 32bpp */
 int sunxi_g2d_blt(void               *disp,
                   uint32_t           *src_bits,
