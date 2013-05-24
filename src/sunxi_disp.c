@@ -467,6 +467,94 @@ int sunxi_g2d_blit_a8r8g8b8(sunxi_disp_t *disp,
 }
 
 /*
+ * The following function implements a 16bpp blit using 32bpp mode by
+ * splitting the area into an aligned middle part (which is blit using
+ * 32bpp mode) and left and right edges if required.
+ *
+ * It assumes the parameters have already been validated by the caller.
+ * This includes the condition (src_x & 1) == (dst_x & 1), which is
+ * necessary to be able to use 32bpp mode.
+ */
+
+int sunxi_g2d_blit_r5g6b5_in_three(sunxi_disp_t *disp, uint8_t *src_bits,
+    uint8_t *dst_bits, int src_stride, int dst_stride, int src_x, int src_y,
+    int dst_x, int dst_y, int w, int h)
+{
+    g2d_blt tmp;
+    /* Set up the invariant blit parameters. */
+    tmp.flag                = G2D_BLT_NONE;
+    tmp.src_image.h         = src_y + h;
+    tmp.src_rect.y          = src_y;
+    tmp.src_rect.h          = h;
+    tmp.dst_image.h         = dst_y + h;
+    tmp.dst_y               = dst_y;
+    tmp.color               = 0;
+    tmp.alpha               = 0;
+
+    if (src_x & 1) {
+        tmp.src_image.addr[0]   = disp->framebuffer_paddr +
+                                  (src_bits - disp->framebuffer_addr);
+        tmp.src_image.format    = G2D_FMT_RGB565;
+        tmp.src_image.pixel_seq = G2D_SEQ_P10;
+        tmp.src_image.w         = src_stride * 2;
+        tmp.src_rect.x          = src_x;
+        tmp.src_rect.w          = 1;
+        tmp.dst_image.addr[0]   = disp->framebuffer_paddr +
+                                  (dst_bits - disp->framebuffer_addr);
+        tmp.dst_image.format    = G2D_FMT_RGB565;
+        tmp.dst_image.pixel_seq = G2D_SEQ_P10;
+        tmp.dst_image.w         = dst_stride * 2;
+        tmp.dst_x               = dst_x;
+        if (ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp))
+            return 0;
+        src_x++;
+        dst_x++;
+        w--;
+    }
+    if (w >= 2) {
+        int w2;
+        tmp.src_image.addr[0]   = disp->framebuffer_paddr +
+                                  (src_bits - disp->framebuffer_addr);
+        tmp.src_image.format    = G2D_FMT_ARGB_AYUV8888;
+        tmp.src_image.pixel_seq = G2D_SEQ_NORMAL;
+        tmp.src_image.w         = src_stride;
+        tmp.src_rect.x          = src_x >> 1;
+        tmp.src_rect.w          = w >> 1;
+        tmp.dst_image.addr[0]   = disp->framebuffer_paddr +
+                                  (dst_bits - disp->framebuffer_addr);
+        tmp.dst_image.format    = G2D_FMT_ARGB_AYUV8888;
+        tmp.dst_image.pixel_seq = G2D_SEQ_NORMAL;
+        tmp.dst_image.w         = dst_stride;
+        tmp.dst_x               = dst_x >> 1;
+        if (ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp))
+            return 0;
+        w2 = (w >> 1) * 2;
+        src_x += w2;
+        dst_x += w2;
+        w &= 1;
+    }
+    if (w) {
+        tmp.src_image.addr[0]   = disp->framebuffer_paddr +
+                                  (src_bits - disp->framebuffer_addr);
+        tmp.src_image.format    = G2D_FMT_RGB565;
+        tmp.src_image.pixel_seq = G2D_SEQ_P10;
+        tmp.src_image.w         = src_stride * 2;
+        tmp.src_rect.x          = src_x;
+        tmp.src_rect.w          = 1;
+        tmp.dst_image.addr[0]   = disp->framebuffer_paddr +
+                                  (dst_bits - disp->framebuffer_addr);
+
+        tmp.dst_image.format    = G2D_FMT_RGB565;
+        tmp.dst_image.pixel_seq = G2D_SEQ_P10;
+        tmp.dst_image.w         = dst_stride * 2;
+        tmp.dst_x               = dst_x;
+        if (ioctl(disp->fd_g2d, G2D_CMD_BITBLT, &tmp))
+            return 0;
+    }
+    return 1;
+}
+
+/*
  * G2D counterpart for pixman_blt (function arguments are the same with
  * only sunxi_disp_t extra argument added). Supports 16bpp (r5g6b5) and
  * 32bpp (a8r8g8b8) formats and also conversion between them.
@@ -527,6 +615,15 @@ int sunxi_g2d_blt(void               *self,
 
     if (disp->fd_g2d < 0)
         return 0;
+
+    /* Do a 16-bit using 32-bit mode if possible. */
+    if (src_bpp == 16 && dst_bpp == 16 && (src_x & 1) == (dst_x & 1))
+        /* Check whether the overlapping type is supported, the condition */
+        /* is slightly different compared to the regular blit. */
+        if (!(src_bits == dst_bits && src_y == dst_y && src_x < dst_x))
+            return sunxi_g2d_blit_r5g6b5_in_three(disp, (uint8_t *)src_bits,
+                (uint8_t *)dst_bits, src_stride, dst_stride, src_x, src_y,
+                dst_x, dst_y, w, h);
 
     if ((src_bpp != 16 && src_bpp != 32) || (dst_bpp != 16 && dst_bpp != 32))
         return 0;
