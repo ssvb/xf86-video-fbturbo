@@ -466,4 +466,43 @@ asm_function aligned_fetch_fbmem_to_scratch_neon
     .unreq      SRC
 .endfunc
 
+asm_function aligned_fetch_fbmem_to_scratch_vfp
+    SIZE        .req r0
+    DST         .req r1
+    SRC         .req r2
+
+    vpush       {d8-d15}
+    subs        SIZE, #128
+    blt         1f
+0:
+    /* aligned load from the source (framebuffer) */
+    vldm        SRC!, {d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15}
+    /* aligned store to the scratch buffer */
+    vstm        DST!, {d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15}
+    subs        SIZE, SIZE, #128
+    bge         0b
+1:
+    tst         SIZE, #64
+    beq         1f
+    vldm        SRC!, {d0, d1, d2, d3, d4, d5, d6, d7}
+    vstm        DST!, {d0, d1, d2, d3, d4, d5, d6, d7}
+1:
+    tst         SIZE, #32
+    beq         1f
+    vldm        SRC!, {d0, d1, d2, d3}
+    vstm        DST!, {d0, d1, d2, d3}
+1:
+    tst         SIZE, #31
+    beq         1f
+    vldm        SRC!, {d0, d1, d2, d3}
+    vstm        DST!, {d0, d1, d2, d3}
+1:
+    vpop        {d8-d15}
+    bx          lr
+
+    .unreq      SIZE
+    .unreq      DST
+    .unreq      SRC
+.endfunc
+
 #endif
