@@ -887,7 +887,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		sunxi_disp_t *disp = fPtr->sunxi_disp_private;
 		if (disp && disp->fd_g2d >= 0 &&
 		    (fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &disp->blt2d))) {
-
+			disp->fallback_blt2d = &cpu_backend->blt2d;
 			xf86DrvMsg(pScrn->scrnIndex, X_INFO, "enabled G2D acceleration\n");
 		}
 		else {

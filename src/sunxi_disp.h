@@ -57,6 +57,8 @@ typedef struct {
 
     /* G2D accelerated implementation of blt2d_i interface */
     blt2d_i             blt2d;
+    /* Optional fallback interface to handle unsupported operations */
+    blt2d_i            *fallback_blt2d;
 } sunxi_disp_t;
 
 sunxi_disp_t *sunxi_disp_init(const char *fb_device, void *xserver_fbmem);

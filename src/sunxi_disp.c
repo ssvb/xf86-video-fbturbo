@@ -554,6 +554,38 @@ int sunxi_g2d_blit_r5g6b5_in_three(sunxi_disp_t *disp, uint8_t *src_bits,
     return 1;
 }
 
+static inline int sunxi_g2d_try_fallback_blt(void               *self,
+                                             uint32_t           *src_bits,
+                                             uint32_t           *dst_bits,
+                                             int                 src_stride,
+                                             int                 dst_stride,
+                                             int                 src_bpp,
+                                             int                 dst_bpp,
+                                             int                 src_x,
+                                             int                 src_y,
+                                             int                 dst_x,
+                                             int                 dst_y,
+                                             int                 w,
+                                             int                 h)
+{
+    sunxi_disp_t *disp = (sunxi_disp_t *)self;
+    if (disp->fallback_blt2d)
+        return disp->fallback_blt2d->overlapped_blt(disp->fallback_blt2d->self,
+                                                    src_bits, dst_bits,
+                                                    src_stride, dst_stride,
+                                                    src_bpp, dst_bpp,
+                                                    src_x, src_y,
+                                                    dst_x, dst_y, w, h);
+    return 0;
+
+}
+
+#define FALLBACK_BLT() sunxi_g2d_try_fallback_blt(self, src_bits,        \
+                                                  dst_bits, src_stride,  \
+                                                  dst_stride, src_bpp,   \
+                                                  dst_bpp, src_x, src_y, \
+                                                  dst_x, dst_y, w, h);
+
 /*
  * G2D counterpart for pixman_blt (function arguments are the same with
  * only sunxi_disp_t extra argument added). Supports 16bpp (r5g6b5) and
@@ -579,6 +611,11 @@ int sunxi_g2d_blt(void               *self,
     sunxi_disp_t *disp = (sunxi_disp_t *)self;
     int blt_size_threshold;
     g2d_blt tmp;
+
+    /* Zero size blit, nothing to do */
+    if (w <= 0 || h <= 0)
+        return 1;
+
     /*
      * Very minimal validation here. We just assume that if the begginging
      * of both source and destination images belongs to the framebuffer,
@@ -591,11 +628,8 @@ int sunxi_g2d_blt(void               *self,
         (uint8_t *)dst_bits < disp->framebuffer_addr ||
         (uint8_t *)dst_bits >= disp->framebuffer_addr + disp->framebuffer_size)
     {
-        return 0;
+        return FALLBACK_BLT();
     }
-
-    if (w <= 0 || h <= 0)
-        return 1;
 
     /*
      * If the area is smaller than G2D_BLT_SIZE_THRESHOLD, prefer to avoid the
@@ -607,14 +641,14 @@ int sunxi_g2d_blt(void               *self,
     else
         blt_size_threshold = G2D_BLT_SIZE_THRESHOLD;
     if (w * h < blt_size_threshold)
-        return 0;
+        return FALLBACK_BLT();
 
     /* Unsupported overlapping type */
     if (src_bits == dst_bits && src_y == dst_y && src_x + 1 < dst_x)
-        return 0;
+        return FALLBACK_BLT();
 
     if (disp->fd_g2d < 0)
-        return 0;
+        return FALLBACK_BLT();
 
     /* Do a 16-bit using 32-bit mode if possible. */
     if (src_bpp == 16 && dst_bpp == 16 && (src_x & 1) == (dst_x & 1))
@@ -626,7 +660,7 @@ int sunxi_g2d_blt(void               *self,
                 dst_x, dst_y, w, h);
 
     if ((src_bpp != 16 && src_bpp != 32) || (dst_bpp != 16 && dst_bpp != 32))
-        return 0;
+        return FALLBACK_BLT();
 
     tmp.flag                    = G2D_BLT_NONE;
     tmp.src_image.addr[0]       = disp->framebuffer_paddr +
