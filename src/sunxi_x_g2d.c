@@ -211,6 +211,95 @@ xCopyArea(DrawablePtr pSrcDrawable,
                       xIn, yIn, widthSrc, heightSrc, xOut, yOut);
 }
 
+/*
+ * The following function is adapted from xserver/fb/fbPutImage.c.
+ */
+
+static void xPutImage(DrawablePtr pDrawable,
+           GCPtr pGC,
+           int depth,
+           int x, int y, int w, int h, int leftPad, int format, char *pImage)
+{
+    FbGCPrivPtr pPriv;
+
+    FbStride srcStride;
+    FbStip *src;
+    RegionPtr pClip;
+    FbStip *dst;
+    FbStride dstStride;
+    int dstBpp;
+    int dstXoff, dstYoff;
+    int nbox;
+    BoxPtr pbox;
+    int x1, y1, x2, y2;
+
+    if (format == XYBitmap || format == XYPixmap ||
+    pDrawable->bitsPerPixel != BitsPerPixel(pDrawable->depth)) {
+        fbPutImage(pDrawable, pGC, depth, x, y, w, h, leftPad, format, pImage);
+        return;
+    }
+
+    pPriv =fbGetGCPrivate(pGC);
+    if (pPriv->pm != FB_ALLONES || pGC->alu != GXcopy) {
+        fbPutImage(pDrawable, pGC, depth, x, y, w, h, leftPad, format, pImage);
+        return;
+    }
+
+    ScreenPtr pScreen = pDrawable->pScreen;
+    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    SunxiG2D *private = SUNXI_G2D(pScrn);
+
+    src = (FbStip *)pImage;
+
+    x += pDrawable->x;
+    y += pDrawable->y;
+
+    srcStride = PixmapBytePad(w, pDrawable->depth) / sizeof(FbStip);
+    pClip = fbGetCompositeClip(pGC);
+
+    fbGetStipDrawable(pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
+
+    for (nbox = RegionNumRects(pClip),
+        pbox = RegionRects(pClip); nbox--; pbox++) {
+        x1 = x;
+        y1 = y;
+        x2 = x + w;
+        y2 = y + h;
+        if (x1 < pbox->x1)
+            x1 = pbox->x1;
+        if (y1 < pbox->y1)
+            y1 = pbox->y1;
+        if (x2 > pbox->x2)
+            x2 = pbox->x2;
+        if (y2 > pbox->y2)
+            y2 = pbox->y2;
+        if (x1 >= x2 || y1 >= y2)
+            continue;
+        Bool done = FALSE;
+        int w = x2 - x1;
+        int h = y2 - y1;
+        /* first try pixman (NEON) */
+        if (!done) {
+            done = pixman_blt((uint32_t *)src, (uint32_t *)dst, srcStride, dstStride,
+                 dstBpp, dstBpp, x1 - x,
+                 y1 - y, x1 + dstXoff,
+                 y1 + dstYoff, w,
+                 h);
+        }
+        /* otherwise fall back to fb */
+        if (!done)
+            fbBlt(src + (y1 - y) * srcStride,
+                  srcStride,
+                  (x1 - x) * dstBpp,
+                  dst + (y1 + dstYoff) * dstStride,
+                  dstStride,
+                  (x1 + dstXoff) * dstBpp,
+                  w * dstBpp,
+                  h, GXcopy, FB_ALLONES, dstBpp, FALSE, FALSE);
+    }
+    fbFinishAccess(pDrawable);
+}
+
 static Bool
 xCreateGC(GCPtr pGC)
 {
@@ -228,6 +317,8 @@ xCreateGC(GCPtr pGC)
 
         /* Add our own hook for CopyArea function */
         self->pGCOps->CopyArea = xCopyArea;
+        /* Add our own hook for PutImage */
+        self->pGCOps->PutImage = xPutImage;
     }
     pGC->ops = self->pGCOps;
 
