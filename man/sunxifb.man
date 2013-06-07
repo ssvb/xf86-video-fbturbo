@@ -88,11 +88,12 @@ about the desktop performance, then you likely don't want to enable
 any compositing effects in your window manager anyway.
 .TP
 .BI "Option \*qAccelMethod\*q \*q" "string" \*q
-Chooses between available acceleration architectures. Currently the
-only supported acceleration architecture is
-.B G2D.
+Chooses between available acceleration architectures. Valid values are
+.B G2D
+and
+.B CPU.
 The default is
-.B no 2D hardware acceleration
+.B G2D.
 
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),

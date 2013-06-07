@@ -882,7 +882,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		           "failed to enable the use of sunxi display controller\n");
 
-	if ((accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) &&
+	if (!(accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) ||
 						strcasecmp(accelmethod, "g2d") == 0) {
 		sunxi_disp_t *disp = fPtr->sunxi_disp_private;
 		if (disp && disp->fd_g2d >= 0 &&
@@ -899,7 +899,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 	else {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-			"no 2D acceleration selected via AccelMethod option\n");
+			"G2D acceleration is disabled via AccelMethod option\n");
 	}
 
 	if (!fPtr->SunxiG2D_private && cpu_backend->cpuinfo->has_arm_neon) {
