@@ -31,6 +31,12 @@
 
 #include "compat-api.h"
 
+#ifdef DEBUG
+#define DebugMsg(...) ErrorF(__VA_ARGS__)
+#else
+#define DebugMsg(...)
+#endif
+
 typedef struct {
 	unsigned char*			fbstart;
 	unsigned char*			fbmem;

@@ -48,12 +48,6 @@
 #include "sunxi_disp_ioctl.h"
 #include "sunxi_mali_ump_dri2.h"
 
-#ifdef DEBUG
-#define DebugMsg(...) ErrorF(__VA_ARGS__)
-#else
-#define DebugMsg(...)
-#endif
-
 
 /*
  * The code below is borrowed from "xserver/dix/window.c"
