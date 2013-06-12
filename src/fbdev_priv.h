@@ -55,6 +55,7 @@ typedef struct {
 	OptionInfoPtr			Options;
 
 	void				*cpu_backend_private;
+	void				*backing_store_tuner_private;
 	void				*sunxi_disp_private;;
 	void				*SunxiDispHardwareCursor_private;
 	void				*SunxiMaliDRI2_private;
@@ -62,6 +63,9 @@ typedef struct {
 } FBDevRec, *FBDevPtr;
 
 #define FBDEVPTR(p) ((FBDevPtr)((p)->driverPrivate))
+
+#define BACKING_STORE_TUNER(p) ((BackingStoreTuner *) \
+                       (FBDEVPTR(p)->backing_store_tuner_private))
 
 #define SUNXI_DISP(p) ((sunxi_disp_t *) \
                        (FBDEVPTR(p)->sunxi_disp_private))

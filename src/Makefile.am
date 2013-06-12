@@ -36,6 +36,8 @@ sunxifb_drv_la_SOURCES = \
          cpuinfo.h \
          cpu_backend.c \
          cpu_backend.h \
+         backing_store_tuner.c \
+         backing_store_tuner.h \
          interfaces.h \
          fbdev.c \
          fbdev_priv.h \

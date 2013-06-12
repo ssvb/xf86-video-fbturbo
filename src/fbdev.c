@@ -51,6 +51,7 @@
 #include "sunxi_disp.h"
 #include "sunxi_disp_hwcursor.h"
 #include "sunxi_x_g2d.h"
+#include "backing_store_tuner.h"
 
 #ifdef HAVE_LIBUMP
 #include "sunxi_mali_ump_dri2.h"
@@ -166,6 +167,8 @@ typedef enum {
 	OPTION_DRI2,
 	OPTION_DRI2_OVERLAY,
 	OPTION_ACCELMETHOD,
+	OPTION_USE_BS,
+	OPTION_FORCE_BS,
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
@@ -178,6 +181,8 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_DRI2,		"DRI2",		OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_DRI2_OVERLAY,	"DRI2HWOverlay",OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_ACCELMETHOD,	"AccelMethod",	OPTV_STRING,	{0},	FALSE },
+	{ OPTION_USE_BS,	"UseBackingStore",OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_FORCE_BS,	"ForceBackingStore",OPTV_BOOLEAN,{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -700,6 +705,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	int type;
 	char *accelmethod;
 	cpu_backend_t *cpu_backend;
+	Bool useBackingStore = FALSE, forceBackingStore = FALSE;
 
 	TRACE_ENTER("FBDevScreenInit");
 
@@ -865,6 +871,29 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	if (init_picture && !fbPictureInit(pScreen, NULL, 0))
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
+
+	/*
+	 * by default make use of backing store (the driver decides for which
+	 * windows it is beneficial) if shadow is not enabled.
+	 */
+	useBackingStore = xf86ReturnOptValBool(fPtr->Options, OPTION_USE_BS,
+	                                       !fPtr->shadowFB);
+#ifndef __arm__
+	/*
+	 * right now we can only make "smart" decisions on ARM hardware,
+	 * everything else (for example x86) would take a performance hit
+	 * unless backing store is just used for all windows.
+	 */
+	forceBackingStore = useBackingStore;
+#endif
+	/* but still honour the settings from xorg.conf */
+	forceBackingStore = xf86ReturnOptValBool(fPtr->Options, OPTION_FORCE_BS,
+	                                         forceBackingStore);
+
+	if (useBackingStore || forceBackingStore) {
+		fPtr->backing_store_tuner_private =
+			BackingStoreTuner_Init(pScreen, forceBackingStore);
+	}
 
 	/* initialize the 'CPU' backend */
 	cpu_backend = cpu_backend_init(fPtr->fbmem, pScrn->videoRam);
@@ -1078,6 +1107,12 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	if (fPtr->cpu_backend_private) {
 	    cpu_backend_close(fPtr->cpu_backend_private);
 	    fPtr->cpu_backend_private = NULL;
+	}
+
+	if (fPtr->backing_store_tuner_private) {
+	    BackingStoreTuner_Close(fPtr->backing_store_tuner_private);
+	    free(fPtr->backing_store_tuner_private);
+	    fPtr->backing_store_tuner_private = NULL;
 	}
 
 	if (fPtr->pDGAMode) {
