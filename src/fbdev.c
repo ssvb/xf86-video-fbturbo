@@ -1110,7 +1110,7 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	}
 
 	if (fPtr->backing_store_tuner_private) {
-	    BackingStoreTuner_Close(fPtr->backing_store_tuner_private);
+	    BackingStoreTuner_Close(pScreen);
 	    free(fPtr->backing_store_tuner_private);
 	    fPtr->backing_store_tuner_private = NULL;
 	}
