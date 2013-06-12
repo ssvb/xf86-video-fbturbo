@@ -516,8 +516,8 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	cpuinfo = cpuinfo_init();
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "processor: %s\n",
 	           cpuinfo->processor_name);
-	/* don't use shadow by default if we have NEON or HW acceleration */
-	fPtr->shadowFB = !cpuinfo->has_arm_neon &&
+	/* don't use shadow by default if we have VFP/NEON or HW acceleration */
+	fPtr->shadowFB = !cpuinfo->has_arm_vfp &&
 	                 !xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD);
 	cpuinfo_close(cpuinfo);
 
@@ -931,9 +931,9 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 			"G2D acceleration is disabled via AccelMethod option\n");
 	}
 
-	if (!fPtr->SunxiG2D_private && cpu_backend->cpuinfo->has_arm_neon) {
+	if (!fPtr->SunxiG2D_private && cpu_backend->cpuinfo->has_arm_vfp) {
 		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &cpu_backend->blt2d))) {
-			xf86DrvMsg(pScrn->scrnIndex, X_INFO, "enabled NEON optimizations\n");
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO, "enabled VFP/NEON optimizations\n");
 		}
 	}
 
