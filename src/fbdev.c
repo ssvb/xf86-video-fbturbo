@@ -47,6 +47,7 @@
 #include "dgaproc.h"
 
 #include "cpu_backend.h"
+#include "fb_copyarea.h"
 
 #include "sunxi_disp.h"
 #include "sunxi_disp_hwcursor.h"
@@ -907,9 +908,13 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	fPtr->sunxi_disp_private = sunxi_disp_init(xf86FindOptionValue(
 	                                fPtr->pEnt->device->options,"fbdev"),
 	                                fPtr->fbmem);
-	if (!fPtr->sunxi_disp_private)
+	if (!fPtr->sunxi_disp_private) {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		           "failed to enable the use of sunxi display controller\n");
+		fPtr->fb_copyarea_private = fb_copyarea_init(xf86FindOptionValue(
+	                                fPtr->pEnt->device->options,"fbdev"),
+	                                fPtr->fbmem);
+	}
 
 	if (!(accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) ||
 						strcasecmp(accelmethod, "g2d") == 0) {
@@ -929,6 +934,15 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	else {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			"G2D acceleration is disabled via AccelMethod option\n");
+	}
+
+	if (!fPtr->SunxiG2D_private && fPtr->fb_copyarea_private) {
+		fb_copyarea_t *fb = fPtr->fb_copyarea_private;
+		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &fb->blt2d))) {
+			fb->fallback_blt2d = &cpu_backend->blt2d;
+			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+				   "enabled fbdev copyarea acceleration\n");
+		}
 	}
 
 	if (!fPtr->SunxiG2D_private && cpu_backend->cpuinfo->has_arm_vfp) {
@@ -1099,6 +1113,10 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	    SunxiG2D_Close(pScreen);
 	    free(fPtr->SunxiG2D_private);
 	    fPtr->SunxiG2D_private = NULL;
+	}
+	if (fPtr->fb_copyarea_private) {
+	    fb_copyarea_close(fPtr->fb_copyarea_private);
+	    fPtr->fb_copyarea_private = NULL;
 	}
 	if (fPtr->sunxi_disp_private) {
 	    sunxi_disp_close(fPtr->sunxi_disp_private);
