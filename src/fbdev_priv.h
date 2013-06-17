@@ -56,7 +56,8 @@ typedef struct {
 
 	void				*cpu_backend_private;
 	void				*backing_store_tuner_private;
-	void				*sunxi_disp_private;;
+	void				*sunxi_disp_private;
+	void				*fb_copyarea_private;
 	void				*SunxiDispHardwareCursor_private;
 	void				*SunxiMaliDRI2_private;
 	void				*SunxiG2D_private;
