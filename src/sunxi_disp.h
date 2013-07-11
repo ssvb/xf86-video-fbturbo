@@ -52,6 +52,7 @@ typedef struct {
     int                 cursor_x, cursor_y;
 
     /* Layers support */
+    int                 gfx_layer_id;
     int                 layer_id;
     int                 layer_has_scaler;
 
@@ -91,7 +92,18 @@ int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t  *ctx,
                                           int           height,
                                           int           stride);
 
+int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
+                                        uint32_t      y_offset_in_framebuffer,
+                                        uint32_t      u_offset_in_framebuffer,
+                                        uint32_t      v_offset_in_framebuffer,
+                                        int           width,
+                                        int           height,
+                                        int           stride);
+
 int sunxi_layer_set_output_window(sunxi_disp_t *ctx, int x, int y, int w, int h);
+
+int sunxi_layer_set_colorkey(sunxi_disp_t *ctx, uint32_t color);
+int sunxi_layer_disable_colorkey(sunxi_disp_t *ctx);
 
 int sunxi_layer_show(sunxi_disp_t *ctx);
 int sunxi_layer_hide(sunxi_disp_t *ctx);

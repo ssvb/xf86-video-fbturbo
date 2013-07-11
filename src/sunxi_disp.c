@@ -135,6 +135,17 @@ sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
     ctx->cursor_x = -1;
     ctx->cursor_y = -1;
 
+    /* Get the id of the screen layer */
+    if (ioctl(ctx->fd_fb,
+              ctx->fb_id == 0 ? FBIOGET_LAYER_HDL_0 : FBIOGET_LAYER_HDL_1,
+              &ctx->gfx_layer_id))
+    {
+        close(ctx->fd_fb);
+        close(ctx->fd_disp);
+        free(ctx);
+        return NULL;
+    }
+
     if (sunxi_layer_reserve(ctx) < 0)
     {
         close(ctx->fd_fb);
@@ -276,7 +287,11 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_GET_PARA, tmp) < 0)
         return ctx->layer_id;
 
-    layer_info.mode = DISP_LAYER_WORK_MODE_SCALER;
+    layer_info.mode      = DISP_LAYER_WORK_MODE_SCALER;
+    /* the screen and overlay layers need to be in different pipes */
+    layer_info.pipe      = 1;
+    layer_info.alpha_en  = 1;
+    layer_info.alpha_val = 255;
 
     /* Initially set "layer_info.fb" to something reasonable in order to avoid
      * "[DISP] not supported scaler input pixel format:0 in Scaler_sw_para_to_reg1"
@@ -348,6 +363,43 @@ int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t *ctx,
     return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_SRC_WINDOW, &tmp);
 }
 
+int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
+                                        uint32_t      y_offset_in_framebuffer,
+                                        uint32_t      u_offset_in_framebuffer,
+                                        uint32_t      v_offset_in_framebuffer,
+                                        int           width,
+                                        int           height,
+                                        int           stride)
+{
+    __disp_fb_t fb;
+    __disp_rect_t rect = { 0, 0, width, height };
+    uint32_t tmp[4];
+    memset(&fb, 0, sizeof(fb));
+
+    if (ctx->layer_id < 0)
+        return -1;
+
+    fb.addr[0] = ctx->framebuffer_paddr + y_offset_in_framebuffer;
+    fb.addr[1] = ctx->framebuffer_paddr + u_offset_in_framebuffer;
+    fb.addr[2] = ctx->framebuffer_paddr + v_offset_in_framebuffer;
+    fb.size.width = stride;
+    fb.size.height = height;
+    fb.format = DISP_FORMAT_YUV420;
+    fb.seq = DISP_SEQ_P3210;
+    fb.mode = DISP_MOD_NON_MB_PLANAR;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    tmp[2] = (uintptr_t)&fb;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_FB, &tmp) < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    tmp[2] = (uintptr_t)&rect;
+    return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_SRC_WINDOW, &tmp);
+}
+
 int sunxi_layer_set_output_window(sunxi_disp_t *ctx, int x, int y, int w, int h)
 {
     __disp_rect_t rect = { x, y, w, h };
@@ -385,6 +437,83 @@ int sunxi_layer_hide(sunxi_disp_t *ctx)
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
     return ioctl(ctx->fd_disp, DISP_CMD_LAYER_CLOSE, &tmp);
+}
+
+int sunxi_layer_set_colorkey(sunxi_disp_t *ctx, uint32_t color)
+{
+    uint32_t tmp[4];
+    __disp_colorkey_t colorkey;
+    __disp_color_t disp_color;
+
+    disp_color.alpha = (color >> 24) & 0xFF;
+    disp_color.red   = (color >> 16) & 0xFF;
+    disp_color.green = (color >> 8)  & 0xFF;
+    disp_color.blue  = (color >> 0)  & 0xFF;
+
+    colorkey.ck_min = disp_color;
+    colorkey.ck_max = disp_color;
+    colorkey.red_match_rule   = 2;
+    colorkey.green_match_rule = 2;
+    colorkey.blue_match_rule  = 2;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = (uintptr_t)&colorkey;
+    if (ioctl(ctx->fd_disp, DISP_CMD_SET_COLORKEY, &tmp))
+        return -1;
+
+    /* Set the overlay layer below the screen layer */
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_BOTTOM, &tmp) < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_BOTTOM, &tmp) < 0)
+        return -1;
+
+    /* Enable color key for the overlay layer */
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_CK_ON, &tmp) < 0)
+        return -1;
+
+    /* Disable color key and enable global alpha for the screen layer */
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_CK_OFF, &tmp) < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_ALPHA_ON, &tmp) < 0)
+        return -1;
+
+    return 0;
+}
+
+int sunxi_layer_disable_colorkey(sunxi_disp_t *ctx)
+{
+    uint32_t tmp[4];
+
+    /* Disable color key for the overlay layer */
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_CK_OFF, &tmp) < 0)
+        return -1;
+
+    /* Set the overlay layer above the screen layer */
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_BOTTOM, &tmp) < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_BOTTOM, &tmp) < 0)
+        return -1;
+
+    return 0;
 }
 
 /*****************************************************************************/
