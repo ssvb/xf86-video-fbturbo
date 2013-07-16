@@ -46,7 +46,9 @@ sunxifb_drv_la_SOURCES = \
          sunxi_x_g2d.c \
          sunxi_x_g2d.h \
          sunxi_disp_hwcursor.c \
-         sunxi_disp_hwcursor.h
+         sunxi_disp_hwcursor.h \
+         sunxi_video.c \
+         sunxi_video.h
 
 if HAVE_LIBUMP
 sunxifb_drv_la_SOURCES += \

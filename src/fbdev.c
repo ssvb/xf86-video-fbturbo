@@ -52,6 +52,7 @@
 #include "sunxi_disp_hwcursor.h"
 #include "sunxi_x_g2d.h"
 #include "backing_store_tuner.h"
+#include "sunxi_video.h"
 
 #ifdef HAVE_LIBUMP
 #include "sunxi_mali_ump_dri2.h"
@@ -1008,7 +1009,13 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	pScreen->CloseScreen = FBDevCloseScreen;
 
 #if XV
-	{
+	if (fPtr->sunxi_disp_private) {
+	    fPtr->SunxiVideo_private = SunxiVideo_Init(pScreen);
+	    if (fPtr->SunxiVideo_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "using sunxi disp layers for X video extension\n");
+	}
+	else {
 	    XF86VideoAdaptorPtr *ptr;
 
 	    int n = xf86XVListGenericAdaptors(pScrn,&ptr);
@@ -1086,6 +1093,14 @@ FBDevCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	    free(fPtr->SunxiDispHardwareCursor_private);
 	    fPtr->SunxiDispHardwareCursor_private = NULL;
 	}
+
+#if XV
+	if (fPtr->SunxiVideo_private) {
+	    SunxiVideo_Close(pScreen);
+	    free(fPtr->SunxiVideo_private);
+	    fPtr->SunxiVideo_private = NULL;
+	}
+#endif
 
 	fbdevHWRestore(pScrn);
 	fbdevHWUnmapVidmem(pScrn);
