@@ -38,6 +38,10 @@
 
 /*****************************************************************************/
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a)  (sizeof((a)) / sizeof((a)[0]))
+#endif
+
 #define SIMD_ALIGN(s) (((s) + 15) & ~15)
 #define MAKE_ATOM(a) MakeAtom(a, sizeof(a) - 1, TRUE)
 
