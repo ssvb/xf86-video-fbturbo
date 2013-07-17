@@ -84,6 +84,10 @@ fi
 
 # Checks for libraries.
 
+# add -pthread to workaround https://github.com/ssvb/xf86-video-sunxifb/issues/11
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -pthread" 
+
 AC_CHECK_LIB([UMP], [ump_open],
              [have_libump=yes
               LIBS="$LIBS -lUMP"
@@ -92,6 +96,11 @@ AC_CHECK_LIB([UMP], [ump_open],
 AC_CHECK_LIB([UMP], [ump_cache_operations_control],
              [AC_DEFINE(HAVE_LIBUMP_CACHE_CONTROL,[1],[UMP cache control])])
 AM_CONDITIONAL([HAVE_LIBUMP], [test x$have_libump = xyes])
+
+# revert back to the original CFLAGS if not messing with libUMP
+if test "x$have_libump" = xno; then
+    CFLAGS="$save_CFLAGS"
+fi
 
 AC_SUBST([moduledir])
 
