@@ -2,7 +2,7 @@
 .ds q \N'34'
 .TH SUNXIFB __drivermansuffix__ __vendorversion__
 .SH NAME
-sunxifb \- video driver for the devices based on Allwinner A10/A13 SoC
+sunxifb \- video driver for Allwinner and other ARM-based devices
 .SH SYNOPSIS
 .nf
 .B "Section \*qDevice\*q"
@@ -13,14 +13,15 @@ sunxifb \- video driver for the devices based on Allwinner A10/A13 SoC
 .fi
 .SH DESCRIPTION
 .B sunxifb
-is an __xservername__ driver for the devices based on Allwinner A10/A13 SoC,
+is an __xservername__ driver for Allwinner and other ARM-based devices,
 derived from
 .B fbdev
 driver.
-With the regards to 2D graphics, currently it only supports sofware rendering.
-However at least it tries to let the SIMD (ARM NEON) accelerated code from the
+With regard to 2D graphics, it provides a number of software optimizations
+on all platforms, while letting the SIMD (ARM NEON) accelerated code from the
 .B pixman
-library run at full speed without any unnecessary overhead. The recommended
+library run at full speed without any unnecessary overhead. 2D hardware
+acceleration using G2D is supported on sunxi platforms. The recommended
 framebuffer color depths are 16 (RGB565) and 24 (XRGB8888), the other color
 depths may be supported too. Multi-head configurations are supported.
 .SH SUPPORTED HARDWARE
@@ -56,7 +57,9 @@ are supported:
 The framebuffer device to use. Default: /dev/fb0.
 .TP
 .BI "Option \*qShadowFB\*q \*q" boolean \*q
-Enable or disable use of the shadow framebuffer layer.  Default: on.
+Enable or disable use of the shadow framebuffer layer.  Default: off on
+most platforms (any hardware that supports NEON, VFP, or 2D hardware
+acceleration).
 .TP
 .BI "Option \*qRotate\*q \*q" string \*q
 Enable rotation of the display. The supported values are "CW" (clockwise,
@@ -77,7 +80,8 @@ Same as "UseBackingStore" option, but don't apply any heuristics and just
 allocate backing store for all windows.
 .TP
 .BI "Option \*qHWCursor\*q \*q" boolean \*q
-Enable or disable the HW cursor.  Default: on.
+Enable or disable the HW cursor.  Supported on sunxi platforms. Default: on
+if supported, off otherwise.
 .TP
 .BI "Option \*qDRI2\*q \*q" boolean \*q
 Enable or disable DRI2 integration for Mali GPU. Provides hardware
@@ -105,8 +109,16 @@ Chooses between available acceleration architectures. Valid values are
 .B G2D
 and
 .B CPU.
+G2D is only available on sunxi hardware with G2D support (such as A10).
 The default is
-.B G2D.
+.B G2D
+on supported platforms, CPU on others.
+
+.TP
+.BI "Option \*qXVHWOverlay\*q \*q" boolean \*q
+Enable or disable the use of display controller hardware overlays for
+XVideo acceleration. Only available on sunxi hardware.
+Default: on if supported, off otherwise.
 
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),

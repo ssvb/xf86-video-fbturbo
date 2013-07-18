@@ -1,4 +1,5 @@
-xf86-video-sunxifb - video driver for the devices based on Allwinner A10/A13 SoC
+xf86-video-sunxifb - video driver for devices based on the Allwinner A10/A13 SoC,
+and other ARM-based devices.
 
 Please submit bugs & patches to:
 
