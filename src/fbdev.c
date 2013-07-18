@@ -170,6 +170,7 @@ typedef enum {
 	OPTION_ACCELMETHOD,
 	OPTION_USE_BS,
 	OPTION_FORCE_BS,
+	OPTION_XV_OVERLAY,
 } FBDevOpts;
 
 static const OptionInfoRec FBDevOptions[] = {
@@ -184,6 +185,7 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_ACCELMETHOD,	"AccelMethod",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_USE_BS,	"UseBackingStore",OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_FORCE_BS,	"ForceBackingStore",OPTV_BOOLEAN,{0},	FALSE },
+	{ OPTION_XV_OVERLAY,	"XVHWOverlay",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
 
@@ -1009,7 +1011,9 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	pScreen->CloseScreen = FBDevCloseScreen;
 
 #if XV
-	if (fPtr->sunxi_disp_private) {
+	fPtr->SunxiVideo_private = NULL;
+	if (xf86ReturnOptValBool(fPtr->Options, OPTION_XV_OVERLAY, TRUE) &&
+	fPtr->sunxi_disp_private) {
 	    fPtr->SunxiVideo_private = SunxiVideo_Init(pScreen);
 	    if (fPtr->SunxiVideo_private)
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
