@@ -273,8 +273,15 @@ static XF86AttributeRec Attributes[] =
 SunxiVideo *SunxiVideo_Init(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    sunxi_disp_t *disp = SUNXI_DISP(pScrn);
     SunxiVideo *self;
     XF86VideoAdaptorPtr adapt;
+
+    if (!disp || !disp->layer_has_scaler) {
+        xf86DrvMsg(pScreen->myNum, X_INFO,
+                   "SunxiVideo_Init: no scalable layer available for XV\n");
+        return NULL;
+    }
 
     if (!(self = calloc(1, sizeof(SunxiVideo)))) {
         xf86DrvMsg(pScreen->myNum, X_INFO, "SunxiVideo_Init: calloc failed\n");
