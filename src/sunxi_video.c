@@ -191,7 +191,7 @@ xPutImage(ScrnInfoPtr pScrn, short src_x, short src_y, short drw_x, short drw_y,
             self->colorKeyEnabled = TRUE;
         }
         sunxi_layer_set_yuv420_input_buffer(disp, y_offset, u_offset, v_offset,
-                                            width, height, y_stride);
+                                            src_w, src_h, y_stride, src_x, src_y);
         sunxi_layer_set_output_window(disp, drw_x, drw_y, drw_w, drw_h);
         sunxi_layer_show(disp);
 

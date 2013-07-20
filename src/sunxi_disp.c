@@ -369,10 +369,12 @@ int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
                                         uint32_t      v_offset_in_framebuffer,
                                         int           width,
                                         int           height,
-                                        int           stride)
+                                        int           stride,
+                                        int           x_pixel_offset,
+                                        int           y_pixel_offset)
 {
     __disp_fb_t fb;
-    __disp_rect_t rect = { 0, 0, width, height };
+    __disp_rect_t rect = { x_pixel_offset, y_pixel_offset, width, height };
     uint32_t tmp[4];
     memset(&fb, 0, sizeof(fb));
 
