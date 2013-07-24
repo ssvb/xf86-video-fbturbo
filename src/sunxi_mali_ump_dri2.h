@@ -47,6 +47,38 @@ typedef struct
     size_t                  height;
 } UMPBufferInfoRec, *UMPBufferInfoPtr;
 
+/*
+ * DRI2 related bookkeeping for windows. Because Mali r3p0 blob has
+ * quirks and needs workarounds, we can't fully rely on the Xorg DRI2
+ * framework. But instead have to predict what is happening on the
+ * client side based on the typical blob behavior.
+ *
+ * The blob is doing something like this:
+ *  1. Requests BackLeft DRI2 buffer (buffer A) and renders to it
+ *  2. Swaps buffers
+ *  3. Requests BackLeft DRI2 buffer (buffer B)
+ *  4. Checks window geometry, and if it has changed - go back to step 1.
+ *  5. Renders to the current back buffer (either buffer A or B)
+ *  6. Swaps buffers
+ *  7. Go back to step 4
+ *
+ * The main problem is that The Mali blob ignores DRI2-InvalidateBuffers
+ * events and just uses GetGeometry polling to check whether the window
+ * size has changed. Unfortunately this is racy and we may end up with a
+ * size mismatch between buffer A and buffer B. This is particularly easy
+ * to trigger when the window size changes exactly between steps 1 and 3.
+ * See test/gles-yellow-blue-flip.c program which demonstrates this.
+ */
+typedef struct
+{
+    UT_hash_handle          hh;
+    DrawablePtr             pDraw;
+    /* width and height must be the same for back and front buffers */
+    int                     width, height;
+    /* the number of back buffer requests */
+    int                     buf_request_cnt;
+} DRI2WindowStateRec, *DRI2WindowStatePtr;
+
 typedef struct {
     int                     overlay_x;
     int                     overlay_y;
@@ -68,6 +100,7 @@ typedef struct {
     ump_secure_id           ump_fb_secure_id;
 
     UMPBufferInfoPtr        HashPixmapToUMP;
+    DRI2WindowStatePtr      HashWindowState;
 
     int                     drm_fd;
 } SunxiMaliDRI2;

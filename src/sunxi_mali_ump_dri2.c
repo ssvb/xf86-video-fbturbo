@@ -203,6 +203,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     sunxi_disp_t            *disp = SUNXI_DISP(pScrn);
     Bool                     can_use_overlay = TRUE;
     PixmapPtr                pWindowPixmap;
+    DRI2WindowStatePtr       window_state = NULL;
 
     if (!(buffer = calloc(1, sizeof *buffer))) {
         ErrorF("MaliDRI2CreateBuffer: calloc failed\n");
@@ -267,7 +268,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     /* The default common values */
     buffer->attachment    = attachment;
     buffer->driverPrivate = privates;
-    buffer->format        = format;
+    buffer->format        = format + 1; /* hack to suppress DRI2 buffers reuse */
     buffer->flags         = 0;
     buffer->cpp           = pDraw->bitsPerPixel / 8;
     /* Stride must be 8 bytes aligned for Mali400 */
@@ -282,6 +283,38 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         DebugMsg("Not enough space in the offscreen framebuffer (wanted %d for DRI2)\n",
                  privates->size);
         can_use_overlay = FALSE;
+    }
+
+    /* Allocate the DRI2-related window bookkeeping information */
+    if (attachment == DRI2BufferBackLeft && pDraw->type == DRAWABLE_WINDOW) {
+        HASH_FIND_PTR(private->HashWindowState, &pDraw, window_state);
+        if (!window_state) {
+            window_state = calloc(1, sizeof(*window_state));
+            window_state->pDraw = pDraw;
+            HASH_ADD_PTR(private->HashWindowState, pDraw, window_state);
+            DebugMsg("Allocate DRI2 bookkeeping for window %p\n", pDraw);
+        }
+        window_state->buf_request_cnt++;
+    }
+
+    /* For odd buffer requests save the window size */
+    if (window_state && (window_state->buf_request_cnt & 1)) {
+        /* remember window size for one buffer */
+        window_state->width = pDraw->width;
+        window_state->height = pDraw->height;
+    }
+
+    /* For even buffer requests check if the window size is still the same */
+    if (window_state && !(window_state->buf_request_cnt & 1) &&
+                         (pDraw->width != window_state->width ||
+                          pDraw->height != window_state->height)) {
+        DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
+        privates->handle = UMP_INVALID_MEMORY_HANDLE;
+        privates->addr   = NULL;
+        buffer->name  = 1;
+        buffer->cpp   = 0;
+        buffer->pitch = 0;
+        return buffer;
     }
 
     if (can_use_overlay) {
@@ -433,6 +466,9 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     MaliDRI2BufferPrivatePtr bufpriv = (MaliDRI2BufferPrivatePtr)pSrcBuffer->driverPrivate;
     sunxi_disp_t *disp = SUNXI_DISP(xf86Screens[pScreen->myNum]);
 
+    if (!bufpriv->addr)
+        return;
+
     UpdateOverlay(pScreen);
 
     if (!drvpriv->bOverlayWinEnabled || bufpriv->handle != UMP_INVALID_MEMORY_HANDLE) {
@@ -530,6 +566,14 @@ DestroyWindow(WindowPtr pWin)
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
     Bool ret;
+    DrawablePtr pDraw = &pWin->drawable;
+    DRI2WindowStatePtr window_state = NULL;
+    HASH_FIND_PTR(private->HashWindowState, &pDraw, window_state);
+    if (window_state) {
+        DebugMsg("Free DRI2 bookkeeping for window %p\n", pWin);
+        HASH_DEL(private->HashWindowState, window_state);
+        free(window_state);
+    }
 
     if (pWin == private->pOverlayWin) {
         sunxi_disp_t *disp = SUNXI_DISP(pScrn);
