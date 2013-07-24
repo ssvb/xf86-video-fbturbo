@@ -97,7 +97,15 @@ typedef struct {
     PostValidateTreeProcPtr PostValidateTree;
     GetImageProcPtr         GetImage;
     DestroyPixmapProcPtr    DestroyPixmap;
+
+    /* the primary UMP secure id for accessing framebuffer */
     ump_secure_id           ump_fb_secure_id;
+    /* the alternative UMP secure id used for the window resize workaround */
+    ump_secure_id           ump_alternative_fb_secure_id;
+    /* the UMP secure id for a dummy buffer */
+    ump_secure_id           ump_null_secure_id;
+    ump_handle              ump_null_handle1;
+    ump_handle              ump_null_handle2;
 
     UMPBufferInfoPtr        HashPixmapToUMP;
     DRI2WindowStatePtr      HashWindowState;

@@ -307,13 +307,14 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     /* For even buffer requests check if the window size is still the same */
     if (window_state && !(window_state->buf_request_cnt & 1) &&
                          (pDraw->width != window_state->width ||
-                          pDraw->height != window_state->height)) {
+                          pDraw->height != window_state->height) &&
+                          private->ump_null_secure_id) {
         DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr   = NULL;
-        buffer->name  = 1;
-        buffer->cpp   = 0;
-        buffer->pitch = 0;
+        buffer->name     = private->ump_null_secure_id;
+        buffer->cpp      = 0;
+        buffer->pitch    = 0;
         return buffer;
     }
 
@@ -711,27 +712,9 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
 {
     int drm_fd;
     DRI2InfoRec info;
-    ump_secure_id ump_id1, ump_id2, ump_id_fb;
+    SunxiMaliDRI2 *private;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     sunxi_disp_t *disp = SUNXI_DISP(pScrn);
-    ump_id1 = ump_id2 = ump_id_fb = UMP_INVALID_SECURE_ID;
-
-    if (disp && bUseOverlay) {
-        /*
-         * Workaround some glitches with secure id assignment (make sure
-         * that GET_UMP_SECURE_ID_BUF1 and GET_UMP_SECURE_ID_BUF2 allocate
-         * lower id numbers than GET_UMP_SECURE_ID_SUNXI_FB)
-         */
-        ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &ump_id1);
-        ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF2, &ump_id2);
-
-        if (ioctl(disp->fd_fb, GET_UMP_SECURE_ID_SUNXI_FB, &ump_id_fb) < 0 ||
-                                   ump_id_fb == UMP_INVALID_SECURE_ID) {
-            xf86DrvMsg(pScreen->myNum, X_INFO,
-                  "GET_UMP_SECURE_ID_SUNXI_FB ioctl failed, overlays can't be used\n");
-            ump_id_fb = UMP_INVALID_SECURE_ID;
-        }
-    }
 
     if (!xf86LoadKernelModule("mali"))
         xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali' kernel module\n");
@@ -752,7 +735,42 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         return NULL;
     }
 
-    if (disp && ump_id_fb != UMP_INVALID_SECURE_ID)
+    if (!(private = calloc(1, sizeof(SunxiMaliDRI2)))) {
+        ErrorF("SunxiMaliDRI2_Init: calloc failed\n");
+        return NULL;
+    }
+
+    if (disp && bUseOverlay) {
+        /* Try to get UMP framebuffer wrapper with secure id 1 */
+        ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &private->ump_alternative_fb_secure_id);
+        /* Try to allocate a small dummy UMP buffer to secure id 2 */
+        private->ump_null_handle1 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+        if (private->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
+            private->ump_null_secure_id = ump_secure_id_get(private->ump_null_handle1);
+        private->ump_null_handle2 = UMP_INVALID_MEMORY_HANDLE;
+        /* Try to get UMP framebuffer for the secure id other than 1 and 2 */
+        if (ioctl(disp->fd_fb, GET_UMP_SECURE_ID_SUNXI_FB, &private->ump_fb_secure_id) ||
+                                   private->ump_fb_secure_id == UMP_INVALID_SECURE_ID) {
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "GET_UMP_SECURE_ID_SUNXI_FB ioctl failed, overlays can't be used\n");
+            private->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
+        }
+    }
+    else {
+        /* Try to allocate small dummy UMP buffers to secure id 1 and 2 */
+        private->ump_null_handle1 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+        if (private->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
+            private->ump_null_secure_id = ump_secure_id_get(private->ump_null_handle1);
+        private->ump_null_handle2 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+    }
+
+    if (private->ump_null_secure_id > 2) {
+        xf86DrvMsg(pScreen->myNum, X_INFO,
+                   "warning, can't workaround Mali r3p0 window resize bug\n");
+        private->ump_null_secure_id = 0;
+    }
+
+    if (disp && private->ump_fb_secure_id != UMP_INVALID_SECURE_ID)
         xf86DrvMsg(pScreen->myNum, X_INFO,
               "enabled display controller hardware overlays for DRI2\n");
     else if (bUseOverlay)
@@ -774,11 +792,11 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
 
     if (!DRI2ScreenInit(pScreen, &info)) {
         drmClose(drm_fd);
+        free(private);
         return NULL;
     }
     else {
         SunxiDispHardwareCursor *hwc = SUNXI_DISP_HWC(pScrn);
-        SunxiMaliDRI2 *private = calloc(1, sizeof(SunxiMaliDRI2));
 
         /* Wrap the current DestroyWindow function */
         private->DestroyWindow = pScreen->DestroyWindow;
@@ -801,7 +819,6 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
             hwc->DisableHWCursor = DisableHWCursor;
         }
 
-        private->ump_fb_secure_id = ump_id_fb;
         private->drm_fd = drm_fd;
         return private;
     }
@@ -823,6 +840,11 @@ void SunxiMaliDRI2_Close(ScreenPtr pScreen)
         hwc->EnableHWCursor  = private->EnableHWCursor;
         hwc->DisableHWCursor = private->DisableHWCursor;
     }
+
+    if (private->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
+        ump_reference_release(private->ump_null_handle1);
+    if (private->ump_null_handle2 != UMP_INVALID_MEMORY_HANDLE)
+        ump_reference_release(private->ump_null_handle2);
 
     drmClose(private->drm_fd);
     DRI2CloseScreen(pScreen);
