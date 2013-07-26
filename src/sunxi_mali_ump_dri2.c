@@ -248,10 +248,30 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         free(buffer);
         return NULL;
     }
+    privates->refcount = 1;
 
-    /* The drawable must be a window for using hardware overlays */
-    if (pDraw->type != DRAWABLE_WINDOW)
-        can_use_overlay = FALSE;
+    /* The default common values */
+    buffer->attachment    = attachment;
+    buffer->driverPrivate = privates;
+    buffer->format        = format + 1; /* hack to suppress DRI2 buffers reuse */
+    buffer->flags         = 0;
+    buffer->cpp           = pDraw->bitsPerPixel / 8;
+    /* Stride must be 8 bytes aligned for Mali400 */
+    buffer->pitch         = ((buffer->cpp * pDraw->width + 7) / 8) * 8;
+
+    privates->size     = pDraw->height * buffer->pitch;
+    privates->width    = pDraw->width;
+    privates->height   = pDraw->height;
+    privates->depth    = pDraw->depth;
+
+    /* We are not interested in anything other than back buffer requests ... */
+    if (attachment != DRI2BufferBackLeft || pDraw->type != DRAWABLE_WINDOW) {
+        /* ... and just return some dummy UMP buffer */
+        privates->handle = UMP_INVALID_MEMORY_HANDLE;
+        privates->addr   = NULL;
+        buffer->name     = private->ump_null_secure_id;
+        return buffer;
+    }
 
     /* We could not allocate disp layer or get framebuffer secure id */
     if (!disp || private->ump_fb_secure_id == UMP_INVALID_SECURE_ID)
@@ -265,20 +285,6 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     if (pDraw->bitsPerPixel != 32)
         can_use_overlay = FALSE;
 
-    /* The default common values */
-    buffer->attachment    = attachment;
-    buffer->driverPrivate = privates;
-    buffer->format        = format + 1; /* hack to suppress DRI2 buffers reuse */
-    buffer->flags         = 0;
-    buffer->cpp           = pDraw->bitsPerPixel / 8;
-    /* Stride must be 8 bytes aligned for Mali400 */
-    buffer->pitch         = ((buffer->cpp * pDraw->width + 7) / 8) * 8;
-
-    privates->size   = pDraw->height * buffer->pitch;
-    privates->width  = pDraw->width;
-    privates->height = pDraw->height;
-    privates->depth  = pDraw->depth;
-
     if (disp && disp->framebuffer_size - disp->gfx_layer_size < privates->size) {
         DebugMsg("Not enough space in the offscreen framebuffer (wanted %d for DRI2)\n",
                  privates->size);
@@ -286,35 +292,31 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     }
 
     /* Allocate the DRI2-related window bookkeeping information */
-    if (attachment == DRI2BufferBackLeft && pDraw->type == DRAWABLE_WINDOW) {
-        HASH_FIND_PTR(private->HashWindowState, &pDraw, window_state);
-        if (!window_state) {
-            window_state = calloc(1, sizeof(*window_state));
-            window_state->pDraw = pDraw;
-            HASH_ADD_PTR(private->HashWindowState, pDraw, window_state);
-            DebugMsg("Allocate DRI2 bookkeeping for window %p\n", pDraw);
-        }
-        window_state->buf_request_cnt++;
+    HASH_FIND_PTR(private->HashWindowState, &pDraw, window_state);
+    if (!window_state) {
+        window_state = calloc(1, sizeof(*window_state));
+        window_state->pDraw = pDraw;
+        HASH_ADD_PTR(private->HashWindowState, pDraw, window_state);
+        DebugMsg("Allocate DRI2 bookkeeping for window %p\n", pDraw);
     }
+    window_state->buf_request_cnt++;
 
     /* For odd buffer requests save the window size */
-    if (window_state && (window_state->buf_request_cnt & 1)) {
+    if (window_state->buf_request_cnt & 1) {
         /* remember window size for one buffer */
         window_state->width = pDraw->width;
         window_state->height = pDraw->height;
     }
 
     /* For even buffer requests check if the window size is still the same */
-    if (window_state && !(window_state->buf_request_cnt & 1) &&
-                         (pDraw->width != window_state->width ||
+    if (!(window_state->buf_request_cnt & 1) &&
+                          (pDraw->width != window_state->width ||
                           pDraw->height != window_state->height) &&
-                          private->ump_null_secure_id) {
+                          private->ump_null_secure_id <= 2) {
         DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr   = NULL;
         buffer->name     = private->ump_null_secure_id;
-        buffer->cpp      = 0;
-        buffer->pitch    = 0;
         return buffer;
     }
 
@@ -767,7 +769,6 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
     if (private->ump_null_secure_id > 2) {
         xf86DrvMsg(pScreen->myNum, X_INFO,
                    "warning, can't workaround Mali r3p0 window resize bug\n");
-        private->ump_null_secure_id = 0;
     }
 
     if (disp && private->ump_fb_secure_id != UMP_INVALID_SECURE_ID)
