@@ -190,6 +190,23 @@ static void UpdateOverlay(ScreenPtr pScreen);
 typedef UMPBufferInfoRec MaliDRI2BufferPrivateRec;
 typedef UMPBufferInfoPtr MaliDRI2BufferPrivatePtr;
 
+static void unref_ump_buffer_info(UMPBufferInfoPtr umpbuf)
+{
+    if (--umpbuf->refcount <= 0) {
+        DebugMsg("unref_ump_buffer_info(%p) [refcount=%d, handle=%p]\n",
+                 umpbuf, umpbuf->refcount, umpbuf->handle);
+        if (umpbuf->handle != UMP_INVALID_MEMORY_HANDLE) {
+            ump_mapped_pointer_release(umpbuf->handle);
+            ump_reference_release(umpbuf->handle);
+        }
+        free(umpbuf);
+    }
+    else {
+        DebugMsg("Reduced ump_buffer_info %p refcount to %d\n",
+                 umpbuf, umpbuf->refcount);
+    }
+}
+
 static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                                            unsigned int attachment,
                                            unsigned int format)
@@ -336,6 +353,25 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         }
     }
     else {
+        /* Reuse the existing UMP buffer if we can */
+        if (window_state->ump_mem_buffer_ptr &&
+            window_state->ump_mem_buffer_ptr->size == privates->size &&
+            window_state->ump_mem_buffer_ptr->depth == privates->depth &&
+            window_state->ump_mem_buffer_ptr->width == privates->width &&
+            window_state->ump_mem_buffer_ptr->height == privates->height) {
+
+            free(privates);
+
+            privates = window_state->ump_mem_buffer_ptr;
+            privates->refcount++;
+            buffer->driverPrivate = privates;
+            buffer->name = ump_secure_id_get(privates->handle);
+
+            DebugMsg("Reuse the already allocated UMP buffer %p, ump=%d\n",
+                     privates, buffer->name);
+            return buffer;
+        }
+
         /* Allocate UMP memory buffer */
 #ifdef HAVE_LIBUMP_CACHE_CONTROL
         privates->handle = ump_ref_drv_allocate(privates->size,
@@ -356,6 +392,13 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         privates->addr = ump_mapped_pointer_get(privates->handle);
         buffer->name = ump_secure_id_get(privates->handle);
         buffer->flags = 0;
+
+        /* Replace the old UMP buffer with the newly allocated one */
+        if (window_state->ump_mem_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
+
+        window_state->ump_mem_buffer_ptr = privates;
+        privates->refcount++;
     }
 
     DebugMsg("DRI2CreateBuffer win=%p, buf=%p:%p, att=%d, ump=%d:%d, w=%d, h=%d, cpp=%d, depth=%d\n",
@@ -381,17 +424,7 @@ static void MaliDRI2DestroyBuffer(DrawablePtr pDraw, DRI2Buffer2Ptr buffer)
 
     if (buffer != NULL) {
         privates = (MaliDRI2BufferPrivatePtr)buffer->driverPrivate;
-        if (!privates->pPixmap) {
-            /* If pPixmap != 0, then these are freed in DestroyPixmap */
-            if (privates->handle != UMP_INVALID_MEMORY_HANDLE) {
-                ump_mapped_pointer_release(privates->handle);
-                ump_reference_release(privates->handle);
-            }
-        }
-        if (--privates->refcount <= 0) {
-            DebugMsg("free(privates)\n");
-            free(privates);
-        }
+        unref_ump_buffer_info(privates);
         free(buffer);
     }
 }
@@ -575,6 +608,8 @@ DestroyWindow(WindowPtr pWin)
     if (window_state) {
         DebugMsg("Free DRI2 bookkeeping for window %p\n", pWin);
         HASH_DEL(private->HashWindowState, window_state);
+        if (window_state->ump_mem_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
         free(window_state);
     }
 
@@ -650,15 +685,9 @@ DestroyPixmap(PixmapPtr pPixmap)
         pPixmap->devKind = umpbuf->BackupDevKind;
         pPixmap->devPrivate.ptr = umpbuf->BackupDevPrivatePtr;
 
-        ump_mapped_pointer_release(umpbuf->handle);
-        ump_reference_release(umpbuf->handle);
-
         HASH_DEL(self->HashPixmapToUMP, umpbuf);
-        DebugMsg("umpbuf->refcount=%d\n", umpbuf->refcount);
-        if (--umpbuf->refcount <= 0) {
-            DebugMsg("free(umpbuf)\n");
-            free(umpbuf);
-        }
+        umpbuf->pPixmap = NULL;
+        unref_ump_buffer_info(umpbuf);
     }
 
     pScreen->DestroyPixmap = self->DestroyPixmap;

@@ -77,6 +77,9 @@ typedef struct
     int                     width, height;
     /* the number of back buffer requests */
     int                     buf_request_cnt;
+
+    /* allocated UMP buffer (shared between back and front DRI2 buffers) */
+    UMPBufferInfoPtr        ump_mem_buffer_ptr;
 } DRI2WindowStateRec, *DRI2WindowStatePtr;
 
 typedef struct {
