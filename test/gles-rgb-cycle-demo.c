@@ -97,7 +97,7 @@ static const EGLint context_attribute_list[] = {
 EGLDisplay egl_display;
 EGLSurface egl_surface;
 
-static int sleep_time = 1;
+static int msleep_time = 1000;
 static int fullscreen_state = 1;
 static int framecount = 0;
 
@@ -128,7 +128,7 @@ Redraw(int width, int height)
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(egl_display, egl_surface);
 
-	sleep(sleep_time);
+	usleep(msleep_time * 1000);
 }
 
 void set_fullscreen_state(int state)
@@ -171,8 +171,8 @@ main(int argc, char *argv[])
 	GLint ret;
 	GLint width, height;
 
-	if (argc <= 1 || sscanf(argv[1], "%i", &sleep_time) != 1 || sleep_time < 0) {
-		sleep_time = 1;
+	if (argc <= 1 || sscanf(argv[1], "%i", &msleep_time) != 1 || msleep_time < 0) {
+		msleep_time = 1000;
 	}
 
 #ifdef USE_X
@@ -262,7 +262,7 @@ main(int argc, char *argv[])
 
 	printf("\nNow you should see the background window color cycling\n");
 	printf("between red, green and blue (starting with red).\n");
-	printf("The animation speed is %d seconds per frame.\n", sleep_time);
+	printf("The animation speed is %d milliseconds per frame.\n", msleep_time);
 	printf("\n");
 	printf("Press 'f' to toggle between fullscreen and windowed mode.\n\n");
 
