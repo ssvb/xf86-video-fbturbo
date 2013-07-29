@@ -34,6 +34,7 @@
 #include "dri2.h"
 #include "damage.h"
 #include "fb.h"
+#include "gcstruct.h"
 
 #include "fbdev_priv.h"
 #include "sunxi_x_g2d.h"
