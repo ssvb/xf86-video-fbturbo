@@ -45,6 +45,11 @@ typedef struct
     int                     depth;
     size_t                  width;
     size_t                  height;
+
+    ump_secure_id           secure_id;
+    unsigned int            pitch;
+    unsigned int            cpp;
+    unsigned int            offs;
 } UMPBufferInfoRec, *UMPBufferInfoPtr;
 
 /*
@@ -87,7 +92,7 @@ typedef struct {
     int                     overlay_y;
 
     WindowPtr               pOverlayWin;
-    void                   *pOverlayDirtyDRI2Buf;
+    UMPBufferInfoPtr        pOverlayDirtyUMP;
     Bool                    bOverlayWinEnabled;
     Bool                    bOverlayWinOverlapped;
     Bool                    bWalkingAboveOverlayWin;

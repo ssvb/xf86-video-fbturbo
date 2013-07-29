@@ -187,9 +187,6 @@ MigratePixmapToUMP(PixmapPtr pPixmap)
 
 static void UpdateOverlay(ScreenPtr pScreen);
 
-typedef UMPBufferInfoRec MaliDRI2BufferPrivateRec;
-typedef UMPBufferInfoPtr MaliDRI2BufferPrivatePtr;
-
 static void unref_ump_buffer_info(UMPBufferInfoPtr umpbuf)
 {
     if (--umpbuf->refcount <= 0) {
@@ -207,6 +204,17 @@ static void unref_ump_buffer_info(UMPBufferInfoPtr umpbuf)
     }
 }
 
+/* Verify and fixup the DRI2Buffer before returning it to the X server */
+static DRI2Buffer2Ptr validate_dri2buf(DRI2Buffer2Ptr dri2buf)
+{
+    UMPBufferInfoPtr umpbuf = (UMPBufferInfoPtr)dri2buf->driverPrivate;
+    umpbuf->secure_id = dri2buf->name;
+    umpbuf->pitch     = dri2buf->pitch;
+    umpbuf->cpp       = dri2buf->cpp;
+    umpbuf->offs      = dri2buf->flags;
+    return dri2buf;
+}
+
 static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                                            unsigned int attachment,
                                            unsigned int format)
@@ -214,7 +222,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     ScreenPtr                pScreen  = pDraw->pScreen;
     ScrnInfoPtr              pScrn    = xf86Screens[pScreen->myNum];
     DRI2Buffer2Ptr           buffer;
-    MaliDRI2BufferPrivatePtr privates;
+    UMPBufferInfoPtr         privates;
     ump_handle               handle;
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
     sunxi_disp_t            *disp = SUNXI_DISP(pScrn);
@@ -257,7 +265,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                  pDraw, buffer, privates, attachment, buffer->name, buffer->flags,
                  privates->width, privates->height, buffer->cpp, privates->depth);
 
-        return buffer;
+        return validate_dri2buf(buffer);
     }
 
     if (!(privates = calloc(1, sizeof *privates))) {
@@ -287,7 +295,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr   = NULL;
         buffer->name     = private->ump_null_secure_id;
-        return buffer;
+        return validate_dri2buf(buffer);
     }
 
     /* We could not allocate disp layer or get framebuffer secure id */
@@ -334,7 +342,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr   = NULL;
         buffer->name     = private->ump_null_secure_id;
-        return buffer;
+        return validate_dri2buf(buffer);
     }
 
     if (can_use_overlay) {
@@ -369,7 +377,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
 
             DebugMsg("Reuse the already allocated UMP buffer %p, ump=%d\n",
                      privates, buffer->name);
-            return buffer;
+            return validate_dri2buf(buffer);
         }
 
         /* Allocate UMP memory buffer */
@@ -405,58 +413,56 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
              pDraw, buffer, privates, attachment, buffer->name, buffer->flags,
              privates->width, privates->height, buffer->cpp, privates->depth);
 
-    return buffer;
+    return validate_dri2buf(buffer);
 }
 
 static void MaliDRI2DestroyBuffer(DrawablePtr pDraw, DRI2Buffer2Ptr buffer)
 {
-    MaliDRI2BufferPrivatePtr privates;
+    UMPBufferInfoPtr privates;
     ScreenPtr pScreen = pDraw->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *drvpriv = SUNXI_MALI_UMP_DRI2(pScrn);
 
-    if (drvpriv->pOverlayDirtyDRI2Buf == buffer)
-        drvpriv->pOverlayDirtyDRI2Buf = NULL;
+    if (drvpriv->pOverlayDirtyUMP == buffer->driverPrivate)
+        drvpriv->pOverlayDirtyUMP = NULL;
 
     DebugMsg("DRI2DestroyBuffer %s=%p, buf=%p:%p, att=%d\n",
              pDraw->type == DRAWABLE_WINDOW ? "win" : "pix",
              pDraw, buffer, buffer->driverPrivate, buffer->attachment);
 
     if (buffer != NULL) {
-        privates = (MaliDRI2BufferPrivatePtr)buffer->driverPrivate;
+        privates = (UMPBufferInfoPtr)buffer->driverPrivate;
         unref_ump_buffer_info(privates);
         free(buffer);
     }
 }
 
 /* Do ordinary copy */
-static void MaliDRI2CopyRegion_copy(DrawablePtr   pDraw,
-                                    RegionPtr     pRegion,
-                                    DRI2BufferPtr pDstBuffer,
-                                    DRI2BufferPtr pSrcBuffer)
+static void MaliDRI2CopyRegion_copy(DrawablePtr      pDraw,
+                                    RegionPtr        pRegion,
+                                    UMPBufferInfoPtr umpbuf)
 {
     GCPtr pGC;
     RegionPtr copyRegion;
     ScreenPtr pScreen = pDraw->pScreen;
-    MaliDRI2BufferPrivatePtr privates;
+    UMPBufferInfoPtr privates;
     PixmapPtr pScratchPixmap;
-    privates = (MaliDRI2BufferPrivatePtr)pSrcBuffer->driverPrivate;
 
 #ifdef HAVE_LIBUMP_CACHE_CONTROL
-    if (privates->handle != UMP_INVALID_MEMORY_HANDLE) {
+    if (umpbuf->handle != UMP_INVALID_MEMORY_HANDLE) {
         /* That's a normal UMP allocation, not a wrapped framebuffer */
         ump_cache_operations_control(UMP_CACHE_OP_START);
-        ump_switch_hw_usage_secure_id(pSrcBuffer->name, UMP_USED_BY_CPU);
+        ump_switch_hw_usage_secure_id(umpbuf->secure_id, UMP_USED_BY_CPU);
         ump_cache_operations_control(UMP_CACHE_OP_FINISH);
     }
 #endif
 
     pGC = GetScratchGC(pDraw->depth, pScreen);
     pScratchPixmap = GetScratchPixmapHeader(pScreen,
-                                            privates->width, privates->height,
-                                            privates->depth, pSrcBuffer->cpp * 8,
-                                            pSrcBuffer->pitch,
-                                            privates->addr + pSrcBuffer->flags);
+                                            umpbuf->width, umpbuf->height,
+                                            umpbuf->depth, umpbuf->cpp * 8,
+                                            umpbuf->pitch,
+                                            umpbuf->addr + umpbuf->offs);
     copyRegion = REGION_CREATE(pScreen, NULL, 0);
     REGION_COPY(pScreen, copyRegion, pRegion);
     (*pGC->funcs->ChangeClip)(pGC, CT_REGION, copyRegion, 0);
@@ -467,10 +473,10 @@ static void MaliDRI2CopyRegion_copy(DrawablePtr   pDraw,
     FreeScratchGC(pGC);
 
 #ifdef HAVE_LIBUMP_CACHE_CONTROL
-    if (privates->handle != UMP_INVALID_MEMORY_HANDLE) {
+    if (umpbuf->handle != UMP_INVALID_MEMORY_HANDLE) {
         /* That's a normal UMP allocation, not a wrapped framebuffer */
         ump_cache_operations_control(UMP_CACHE_OP_START);
-        ump_switch_hw_usage_secure_id(pSrcBuffer->name, UMP_USED_BY_MALI);
+        ump_switch_hw_usage_secure_id(umpbuf->secure_id, UMP_USED_BY_MALI);
         ump_cache_operations_control(UMP_CACHE_OP_FINISH);
     }
 #endif
@@ -481,13 +487,12 @@ static void FlushOverlay(ScreenPtr pScreen)
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *self = SUNXI_MALI_UMP_DRI2(pScrn);
 
-    if (self->pOverlayWin && self->pOverlayDirtyDRI2Buf) {
+    if (self->pOverlayWin && self->pOverlayDirtyUMP) {
         DebugMsg("Flushing overlay content from DRI2 buffer to window\n");
         MaliDRI2CopyRegion_copy((DrawablePtr)self->pOverlayWin,
                                 &pScreen->root->winSize,
-                                self->pOverlayDirtyDRI2Buf,
-                                self->pOverlayDirtyDRI2Buf);
-        self->pOverlayDirtyDRI2Buf = NULL;
+                                self->pOverlayDirtyUMP);
+        self->pOverlayDirtyUMP = NULL;
     }
 }
 
@@ -499,7 +504,7 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     ScreenPtr pScreen = pDraw->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *drvpriv = SUNXI_MALI_UMP_DRI2(pScrn);
-    MaliDRI2BufferPrivatePtr bufpriv = (MaliDRI2BufferPrivatePtr)pSrcBuffer->driverPrivate;
+    UMPBufferInfoPtr bufpriv = (UMPBufferInfoPtr)pSrcBuffer->driverPrivate;
     sunxi_disp_t *disp = SUNXI_DISP(xf86Screens[pScreen->myNum]);
 
     if (!bufpriv->addr)
@@ -508,13 +513,13 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     UpdateOverlay(pScreen);
 
     if (!drvpriv->bOverlayWinEnabled || bufpriv->handle != UMP_INVALID_MEMORY_HANDLE) {
-        MaliDRI2CopyRegion_copy(pDraw, pRegion, pDstBuffer, pSrcBuffer);
-        drvpriv->pOverlayDirtyDRI2Buf = NULL;
+        MaliDRI2CopyRegion_copy(pDraw, pRegion, bufpriv);
+        drvpriv->pOverlayDirtyUMP = NULL;
         return;
     }
 
-    /* Mark the overlay as "dirty" and remember the last up to date DRI2 buffer */
-    drvpriv->pOverlayDirtyDRI2Buf = pSrcBuffer;
+    /* Mark the overlay as "dirty" and remember the last up to date UMP buffer */
+    drvpriv->pOverlayDirtyUMP = bufpriv;
 
     /* Activate the overlay */
     sunxi_layer_set_output_window(disp, pDraw->x, pDraw->y, pDraw->width, pDraw->height);
@@ -658,7 +663,7 @@ GetImage(DrawablePtr pDrawable, int x, int y, int w, int h,
     SunxiMaliDRI2 *private = SUNXI_MALI_UMP_DRI2(pScrn);
 
     /* FIXME: more precise check */
-    if (private->pOverlayDirtyDRI2Buf)
+    if (private->pOverlayDirtyUMP)
         FlushOverlay(pScreen);
 
     if (private->GetImage) {
