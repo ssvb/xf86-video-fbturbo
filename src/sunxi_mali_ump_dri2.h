@@ -85,6 +85,18 @@ typedef struct
 
     /* allocated UMP buffer (shared between back and front DRI2 buffers) */
     UMPBufferInfoPtr        ump_mem_buffer_ptr;
+
+    /* UMP buffers for hardware overlay and double buffering */
+    UMPBufferInfoPtr        ump_back_buffer_ptr;
+    UMPBufferInfoPtr        ump_front_buffer_ptr;
+
+    /*
+     * The queue for incoming UMP buffers. We need to have it because DRI2
+     * buffer requests and buffer swaps sometimes may come out of order.
+     */
+    UMPBufferInfoPtr        ump_queue[16];
+    int                     ump_queue_head;
+    int                     ump_queue_tail;
 } DRI2WindowStateRec, *DRI2WindowStatePtr;
 
 typedef struct {

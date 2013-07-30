@@ -48,6 +48,9 @@
 #include "sunxi_disp_ioctl.h"
 #include "sunxi_mali_ump_dri2.h"
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a)  (sizeof((a)) / sizeof((a)[0]))
+#endif
 
 /*
  * The code below is borrowed from "xserver/dix/window.c"
@@ -204,6 +207,35 @@ static void unref_ump_buffer_info(UMPBufferInfoPtr umpbuf)
     }
 }
 
+static void umpbuf_add_to_queue(DRI2WindowStatePtr window_state,
+                                UMPBufferInfoPtr umpbuf)
+{
+    if (window_state->ump_queue[window_state->ump_queue_head]) {
+        ErrorF("Fatal error, UMP buffers queue overflow!\n");
+        return;
+    }
+
+    window_state->ump_queue[window_state->ump_queue_head] = umpbuf;
+    window_state->ump_queue_head = (window_state->ump_queue_head + 1) %
+                                   ARRAY_SIZE(window_state->ump_queue);
+}
+
+static UMPBufferInfoPtr umpbuf_fetch_from_queue(DRI2WindowStatePtr window_state)
+{
+    UMPBufferInfoPtr umpbuf;
+
+    /* Check if the queue is empty */
+    if (window_state->ump_queue_tail == window_state->ump_queue_head)
+        return NULL;
+
+    umpbuf = window_state->ump_queue[window_state->ump_queue_tail];
+    window_state->ump_queue[window_state->ump_queue_tail] = NULL;
+
+    window_state->ump_queue_tail = (window_state->ump_queue_tail + 1) %
+                                   ARRAY_SIZE(window_state->ump_queue);
+    return umpbuf;
+}
+
 /* Verify and fixup the DRI2Buffer before returning it to the X server */
 static DRI2Buffer2Ptr validate_dri2buf(DRI2Buffer2Ptr dri2buf)
 {
@@ -229,6 +261,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     Bool                     can_use_overlay = TRUE;
     PixmapPtr                pWindowPixmap;
     DRI2WindowStatePtr       window_state = NULL;
+    Bool                     need_window_resize_bug_workaround = FALSE;
 
     if (!(buffer = calloc(1, sizeof *buffer))) {
         ErrorF("MaliDRI2CreateBuffer: calloc failed\n");
@@ -310,7 +343,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     if (pDraw->bitsPerPixel != 32)
         can_use_overlay = FALSE;
 
-    if (disp && disp->framebuffer_size - disp->gfx_layer_size < privates->size) {
+    if (disp && disp->framebuffer_size - disp->gfx_layer_size < privates->size * 2) {
         DebugMsg("Not enough space in the offscreen framebuffer (wanted %d for DRI2)\n",
                  privates->size);
         can_use_overlay = FALSE;
@@ -334,33 +367,61 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     }
 
     /* For even buffer requests check if the window size is still the same */
-    if (!(window_state->buf_request_cnt & 1) &&
+    need_window_resize_bug_workaround =
+                          !(window_state->buf_request_cnt & 1) &&
                           (pDraw->width != window_state->width ||
-                          pDraw->height != window_state->height) &&
-                          private->ump_null_secure_id <= 2) {
-        DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
-        privates->handle = UMP_INVALID_MEMORY_HANDLE;
-        privates->addr   = NULL;
-        buffer->name     = private->ump_null_secure_id;
-        return validate_dri2buf(buffer);
-    }
+                           pDraw->height != window_state->height) &&
+                          private->ump_null_secure_id <= 2;
 
     if (can_use_overlay) {
+        /* Release unneeded buffers */
+        if (window_state->ump_mem_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
+        window_state->ump_mem_buffer_ptr = NULL;
+
         /* Use offscreen part of the framebuffer as an overlay */
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr = disp->framebuffer_addr;
 
         buffer->name = private->ump_fb_secure_id;
-        buffer->flags = disp->gfx_layer_size; /* this is offset */
+
+        if (window_state->buf_request_cnt & 1)
+            buffer->flags = disp->gfx_layer_size;
+        else
+            buffer->flags = disp->gfx_layer_size + privates->size;
+
+        umpbuf_add_to_queue(window_state, privates);
+        privates->refcount++;
 
         private->pOverlayWin = (WindowPtr)pDraw;
 
-        if (sunxi_layer_set_x8r8g8b8_input_buffer(disp, buffer->flags,
-                    privates->width, privates->height, buffer->pitch / 4) < 0) {
-            ErrorF("Failed to set the source buffer for sunxi disp layer\n");
+        if (need_window_resize_bug_workaround) {
+            DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
+            buffer->name = private->ump_alternative_fb_secure_id;
         }
     }
     else {
+        /* Release unneeded buffers */
+        if (window_state->ump_back_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
+        window_state->ump_back_buffer_ptr = NULL;
+        if (window_state->ump_front_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_front_buffer_ptr);
+        window_state->ump_front_buffer_ptr = NULL;
+
+        if (need_window_resize_bug_workaround) {
+            DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
+
+            if (window_state->ump_mem_buffer_ptr)
+                unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
+            window_state->ump_mem_buffer_ptr = NULL;
+
+            privates->handle = UMP_INVALID_MEMORY_HANDLE;
+            privates->addr   = NULL;
+            buffer->name     = private->ump_null_secure_id;
+            return validate_dri2buf(buffer);
+        }
+
         /* Reuse the existing UMP buffer if we can */
         if (window_state->ump_mem_buffer_ptr &&
             window_state->ump_mem_buffer_ptr->size == privates->size &&
@@ -504,25 +565,54 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     ScreenPtr pScreen = pDraw->pScreen;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     SunxiMaliDRI2 *drvpriv = SUNXI_MALI_UMP_DRI2(pScrn);
-    UMPBufferInfoPtr bufpriv = (UMPBufferInfoPtr)pSrcBuffer->driverPrivate;
+    UMPBufferInfoPtr umpbuf;
     sunxi_disp_t *disp = SUNXI_DISP(xf86Screens[pScreen->myNum]);
+    DRI2WindowStatePtr window_state = NULL;
+    HASH_FIND_PTR(drvpriv->HashWindowState, &pDraw, window_state);
 
-    if (!bufpriv->addr)
+    if (pDraw->type == DRAWABLE_PIXMAP) {
+        DebugMsg("MaliDRI2CopyRegion has been called for pixmap %p\n", pDraw);
+        return;
+    }
+
+    if (!window_state) {
+        DebugMsg("MaliDRI2CopyRegion: can't find window %p in the hash\n", pDraw);
+        return;
+    }
+
+    /* Try to fetch a new UMP buffer from the queue */
+    if (umpbuf = umpbuf_fetch_from_queue(window_state)) {
+        if (window_state->ump_back_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
+        window_state->ump_back_buffer_ptr = umpbuf;
+    }
+
+    /* Swap back and front buffers */
+    umpbuf                             = window_state->ump_back_buffer_ptr;
+    window_state->ump_back_buffer_ptr  = window_state->ump_front_buffer_ptr;
+    window_state->ump_front_buffer_ptr = umpbuf;
+
+    if (!umpbuf)
+        umpbuf = window_state->ump_mem_buffer_ptr;
+
+    if (!umpbuf || !umpbuf->addr)
         return;
 
     UpdateOverlay(pScreen);
 
-    if (!drvpriv->bOverlayWinEnabled || bufpriv->handle != UMP_INVALID_MEMORY_HANDLE) {
-        MaliDRI2CopyRegion_copy(pDraw, pRegion, bufpriv);
+    if (!drvpriv->bOverlayWinEnabled || umpbuf->handle != UMP_INVALID_MEMORY_HANDLE) {
+        MaliDRI2CopyRegion_copy(pDraw, pRegion, umpbuf);
         drvpriv->pOverlayDirtyUMP = NULL;
         return;
     }
 
     /* Mark the overlay as "dirty" and remember the last up to date UMP buffer */
-    drvpriv->pOverlayDirtyUMP = bufpriv;
+    drvpriv->pOverlayDirtyUMP = umpbuf;
 
     /* Activate the overlay */
     sunxi_layer_set_output_window(disp, pDraw->x, pDraw->y, pDraw->width, pDraw->height);
+    sunxi_layer_set_x8r8g8b8_input_buffer(disp, umpbuf->offs, umpbuf->width,
+                                          umpbuf->height, umpbuf->pitch / 4);
     sunxi_layer_show(disp);
 }
 
@@ -615,6 +705,10 @@ DestroyWindow(WindowPtr pWin)
         HASH_DEL(private->HashWindowState, window_state);
         if (window_state->ump_mem_buffer_ptr)
             unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
+        if (window_state->ump_back_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
+        if (window_state->ump_front_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_front_buffer_ptr);
         free(window_state);
     }
 
