@@ -131,9 +131,14 @@ typedef struct {
     DRI2WindowStatePtr      HashWindowState;
 
     int                     drm_fd;
+
+    /* Wait for vsync when swapping DRI2 buffers */
+    Bool                    bSwapbuffersWait;
 } SunxiMaliDRI2;
 
-SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay);
+SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
+                                  Bool      bUseOverlay,
+                                  Bool      bSwapbuffersWait);
 void SunxiMaliDRI2_Close(ScreenPtr pScreen);
 
 #endif

@@ -167,6 +167,7 @@ typedef enum {
 	OPTION_SW_CURSOR,
 	OPTION_DRI2,
 	OPTION_DRI2_OVERLAY,
+	OPTION_SWAPBUFFERS_WAIT,
 	OPTION_ACCELMETHOD,
 	OPTION_USE_BS,
 	OPTION_FORCE_BS,
@@ -182,6 +183,7 @@ static const OptionInfoRec FBDevOptions[] = {
 	{ OPTION_SW_CURSOR,	"SWCursor",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_DRI2,		"DRI2",		OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_DRI2_OVERLAY,	"DRI2HWOverlay",OPTV_BOOLEAN,	{0},	FALSE },
+	{ OPTION_SWAPBUFFERS_WAIT,"SwapbuffersWait",OPTV_BOOLEAN,{0},	FALSE },
 	{ OPTION_ACCELMETHOD,	"AccelMethod",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_USE_BS,	"UseBackingStore",OPTV_BOOLEAN,	{0},	FALSE },
 	{ OPTION_FORCE_BS,	"ForceBackingStore",OPTV_BOOLEAN,{0},	FALSE },
@@ -1047,7 +1049,8 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	if (xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2, TRUE)) {
 
 	    fPtr->SunxiMaliDRI2_private = SunxiMaliDRI2_Init(pScreen,
-		xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2_OVERLAY, TRUE));
+		xf86ReturnOptValBool(fPtr->Options, OPTION_DRI2_OVERLAY, TRUE),
+		xf86ReturnOptValBool(fPtr->Options, OPTION_SWAPBUFFERS_WAIT, TRUE));
 
 	    if (fPtr->SunxiMaliDRI2_private) {
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,

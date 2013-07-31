@@ -104,6 +104,15 @@ some improvements are possible in this area. But if you really care
 about the desktop performance, then you likely don't want to enable
 any compositing effects in your window manager anyway.
 .TP
+.BI "Option \*qSwapbuffersWait\*q \*q" boolean \*q
+This option controls the behavior of eglSwapBuffers calls by OpenGL ES
+applications. If enabled, the calls will try to avoid tearing by making
+sure the display scanline is outside of the area to be copied before the
+copy occurs. If disabled, no scanline synchronization is performed,
+meaning tearing will likely occur. Note that when enabled, this option
+can adversely affect the framerate of applications that render frames
+at less than refresh rate.  Default: enabled.
+.TP
 .BI "Option \*qAccelMethod\*q \*q" "string" \*q
 Chooses between available acceleration architectures. Valid values are
 .B G2D

@@ -614,6 +614,11 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     sunxi_layer_set_x8r8g8b8_input_buffer(disp, umpbuf->offs, umpbuf->width,
                                           umpbuf->height, umpbuf->pitch / 4);
     sunxi_layer_show(disp);
+
+    if (drvpriv->bSwapbuffersWait) {
+        /* FIXME: blocking here for up to 1/60 second is not nice */
+        sunxi_wait_for_vsync(disp);
+    }
 }
 
 /************************************************************************/
@@ -838,7 +843,9 @@ static void DisableHWCursor(ScrnInfoPtr pScrn)
     }
 }
 
-SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
+SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
+                                  Bool      bUseOverlay,
+                                  Bool      bSwapbuffersWait)
 {
     int drm_fd;
     DRI2InfoRec info;
@@ -909,6 +916,9 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         xf86DrvMsg(pScreen->myNum, X_INFO,
               "display controller hardware overlays are not used for DRI2\n");
 
+    xf86DrvMsg(pScreen->myNum, X_INFO, "Wait on SwapBuffers? %s\n",
+               bSwapbuffersWait ? "enabled" : "disabled");
+
     info.version = 3;
 
     info.driverName = "sunxi-mali";
@@ -949,6 +959,7 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen, Bool bUseOverlay)
         }
 
         private->drm_fd = drm_fd;
+        private->bSwapbuffersWait = bSwapbuffersWait;
         return private;
     }
 }
