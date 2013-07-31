@@ -360,6 +360,11 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         window_state->pDraw = pDraw;
         HASH_ADD_PTR(private->HashWindowState, pDraw, window_state);
         DebugMsg("Allocate DRI2 bookkeeping for window %p\n", pDraw);
+        if (disp && can_use_overlay) {
+            /* erase the offscreen part of the framebuffer */
+            memset(disp->framebuffer_addr + disp->gfx_layer_size, 0,
+                   disp->framebuffer_size - disp->gfx_layer_size);
+        }
     }
     window_state->buf_request_cnt++;
 
