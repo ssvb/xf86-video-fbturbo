@@ -339,6 +339,10 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     if (private->pOverlayWin && private->pOverlayWin != (void *)pDraw)
         can_use_overlay = FALSE;
 
+    /* Don't waste overlay on some strange 1x1 window created by gnome-shell */
+    if (pDraw->width == 1 && pDraw->height == 1)
+        can_use_overlay = FALSE;
+
     /* TODO: try to support other color depths later */
     if (pDraw->bitsPerPixel != 32)
         can_use_overlay = FALSE;
