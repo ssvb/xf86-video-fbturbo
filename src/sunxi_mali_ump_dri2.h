@@ -97,6 +97,18 @@ typedef struct
     UMPBufferInfoPtr        ump_queue[16];
     int                     ump_queue_head;
     int                     ump_queue_tail;
+
+    /*
+     * In the case DEBUG_WITH_RGB_PATTERN is defined, we add extra debugging
+     * code for verifying that for each new frame, the background color is
+     * changed as "R -> G -> B -> R -> G -> B -> ..." pattern and there are
+     * no violations of this color change order. It is intended to be used
+     * together with "test/gles-rgb-cycle-demo.c" program, which can generate
+     * such pattern.
+     */
+#ifdef DEBUG_WITH_RGB_PATTERN
+    char                    rgb_pattern_state;
+#endif
 } DRI2WindowStateRec, *DRI2WindowStatePtr;
 
 typedef struct {

@@ -566,6 +566,47 @@ static void FlushOverlay(ScreenPtr pScreen)
     }
 }
 
+#ifdef DEBUG_WITH_RGB_PATTERN
+static void check_rgb_pattern(DRI2WindowStatePtr window_state,
+                              UMPBufferInfoPtr umpbuf)
+{
+    switch (*(uint32_t *)(umpbuf->addr + umpbuf->offs)) {
+    case 0xFFFF0000:
+        if (window_state->rgb_pattern_state == 0) {
+            ErrorF("starting RGB pattern with [Red]\n");
+        }
+        else if (window_state->rgb_pattern_state != 'B') {
+            ErrorF("warning - transition to [Red] not from [Blue]\n");
+        }
+        window_state->rgb_pattern_state = 'R';
+        break;
+    case 0xFF00FF00:
+        if (window_state->rgb_pattern_state == 0) {
+            ErrorF("starting RGB pattern with [Green]\n");
+        }
+        else if (window_state->rgb_pattern_state != 'R') {
+            ErrorF("warning - transition to [Green] not from [Red]\n");
+        }
+        window_state->rgb_pattern_state = 'G';
+        break;
+    case 0xFF0000FF:
+        if (window_state->rgb_pattern_state == 0) {
+            ErrorF("starting RGB pattern with [Blue]\n");
+        }
+        else if (window_state->rgb_pattern_state != 'G') {
+            ErrorF("warning - transition to [Blue] not from [Green]\n");
+        }
+        window_state->rgb_pattern_state = 'B';
+        break;
+    default:
+        if (window_state->rgb_pattern_state != 0) {
+            ErrorF("stopping RGB pattern\n");
+        }
+        window_state->rgb_pattern_state = 0;
+    }
+}
+#endif
+
 static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
                                RegionPtr     pRegion,
                                DRI2BufferPtr pDstBuffer,
@@ -606,6 +647,10 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
 
     if (!umpbuf || !umpbuf->addr)
         return;
+
+#ifdef DEBUG_WITH_RGB_PATTERN
+    check_rgb_pattern(window_state, umpbuf);
+#endif
 
     UpdateOverlay(pScreen);
 
