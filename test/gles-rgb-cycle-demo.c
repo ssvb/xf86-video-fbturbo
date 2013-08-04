@@ -97,6 +97,7 @@ static const EGLint context_attribute_list[] = {
 EGLDisplay egl_display;
 EGLSurface egl_surface;
 
+static int slow_motion = 0;
 static int msleep_time = 1000;
 static int fullscreen_state = 1;
 static int framecount = 0;
@@ -128,7 +129,10 @@ Redraw(int width, int height)
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(egl_display, egl_surface);
 
-	usleep(msleep_time * 1000);
+	if (slow_motion)
+		usleep(1000 * 1000);
+	else
+		usleep(msleep_time * 1000);
 }
 
 void set_fullscreen_state(int state)
@@ -264,7 +268,8 @@ main(int argc, char *argv[])
 	printf("between red, green and blue (starting with red).\n");
 	printf("The animation speed is %d milliseconds per frame.\n", msleep_time);
 	printf("\n");
-	printf("Press 'f' to toggle between fullscreen and windowed mode.\n\n");
+	printf("Press 'f' to toggle between fullscreen and windowed mode.\n");
+	printf("Press ' ' to toggle between normal speed and slow motion.\n\n");
 
 #ifdef USE_X
 	set_fullscreen_state(fullscreen_state);
@@ -281,6 +286,8 @@ main(int argc, char *argv[])
 				break;
 			if (xev.type == KeyPress && xev.xkey.keycode == 41)
 				set_fullscreen_state(fullscreen_state ^= 1);
+			if (xev.type == KeyPress && xev.xkey.keycode == 65)
+				slow_motion ^= 1;
 		}
 		Redraw(width, height);
 	}
