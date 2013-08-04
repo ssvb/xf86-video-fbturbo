@@ -394,10 +394,14 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
 
         buffer->name = private->ump_fb_secure_id;
 
-        if (window_state->buf_request_cnt & 1)
+        if (window_state->buf_request_cnt & 1) {
             buffer->flags = disp->gfx_layer_size;
-        else
+            privates->extra_flags |= UMPBUF_MUST_BE_ODD_FRAME;
+        }
+        else {
             buffer->flags = disp->gfx_layer_size + privates->size;
+            privates->extra_flags |= UMPBUF_MUST_BE_EVEN_FRAME;
+        }
 
         umpbuf_add_to_queue(window_state, privates);
         privates->refcount++;
@@ -631,16 +635,35 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
     }
 
     /* Try to fetch a new UMP buffer from the queue */
-    if (umpbuf = umpbuf_fetch_from_queue(window_state)) {
-        if (window_state->ump_back_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
-        window_state->ump_back_buffer_ptr = umpbuf;
+    umpbuf = umpbuf_fetch_from_queue(window_state);
+
+    /*
+     * Swap back and front buffers. But also ensure that the buffer
+     * flags UMPBUF_MUST_BE_ODD_FRAME and UMPBUF_MUST_BE_EVEN_FRAME
+     * are respected. In the case if swapping the buffers would result
+     * in fetching the UMP buffer from the queue in the wrong order,
+     * just skip the swap. This is a hack, which causes some temporary
+     * glitch when resizing windows, but prevents a bigger problem.
+     */
+    if (!umpbuf || (!((umpbuf->extra_flags & UMPBUF_MUST_BE_ODD_FRAME) &&
+                     (window_state->buf_swap_cnt & 1)) &&
+                    !((umpbuf->extra_flags & UMPBUF_MUST_BE_EVEN_FRAME) &&
+                     !(window_state->buf_swap_cnt & 1)))) {
+        UMPBufferInfoPtr tmp               = window_state->ump_back_buffer_ptr;
+        window_state->ump_back_buffer_ptr  = window_state->ump_front_buffer_ptr;
+        window_state->ump_front_buffer_ptr = tmp;
+        window_state->buf_swap_cnt++;
     }
 
-    /* Swap back and front buffers */
-    umpbuf                             = window_state->ump_back_buffer_ptr;
-    window_state->ump_back_buffer_ptr  = window_state->ump_front_buffer_ptr;
-    window_state->ump_front_buffer_ptr = umpbuf;
+    /* Try to replace the front buffer with a new UMP buffer from the queue */
+    if (umpbuf) {
+        if (window_state->ump_front_buffer_ptr)
+            unref_ump_buffer_info(window_state->ump_front_buffer_ptr);
+        window_state->ump_front_buffer_ptr = umpbuf;
+    }
+    else {
+        umpbuf = window_state->ump_front_buffer_ptr;
+    }
 
     if (!umpbuf)
         umpbuf = window_state->ump_mem_buffer_ptr;

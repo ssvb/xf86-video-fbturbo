@@ -29,6 +29,9 @@
 
 #include "uthash.h"
 
+#define UMPBUF_MUST_BE_ODD_FRAME  1
+#define UMPBUF_MUST_BE_EVEN_FRAME 2
+
 /* Data structure with the information about an UMP buffer */
 typedef struct
 {
@@ -45,6 +48,7 @@ typedef struct
     int                     depth;
     size_t                  width;
     size_t                  height;
+    int                     extra_flags;
 
     ump_secure_id           secure_id;
     unsigned int            pitch;
@@ -81,7 +85,9 @@ typedef struct
     /* width and height must be the same for back and front buffers */
     int                     width, height;
     /* the number of back buffer requests */
-    int                     buf_request_cnt;
+    unsigned int            buf_request_cnt;
+    /* the number of back/front buffer swaps */
+    unsigned int            buf_swap_cnt;
 
     /* allocated UMP buffer (shared between back and front DRI2 buffers) */
     UMPBufferInfoPtr        ump_mem_buffer_ptr;
