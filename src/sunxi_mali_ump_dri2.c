@@ -976,6 +976,9 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
         if (mali->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
             mali->ump_null_secure_id = ump_secure_id_get(mali->ump_null_handle1);
         mali->ump_null_handle2 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+        /* No UMP wrappers for the framebuffer are available */
+        mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
+        mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
     }
 
     if (mali->ump_null_secure_id > 2) {
