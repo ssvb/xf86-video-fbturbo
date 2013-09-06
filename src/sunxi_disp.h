@@ -56,6 +56,9 @@ typedef struct {
     int                 layer_id;
     int                 layer_has_scaler;
 
+    int                 layer_scaler_is_enabled;
+    int                 layer_format;
+
     /* G2D accelerated implementation of blt2d_i interface */
     blt2d_i             blt2d;
     /* Optional fallback interface to handle unsupported operations */

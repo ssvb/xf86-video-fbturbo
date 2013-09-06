@@ -266,6 +266,28 @@ int sunxi_hw_cursor_hide(sunxi_disp_t *ctx)
  * Support for scaled layers                                                 *
  *****************************************************************************/
 
+static int sunxi_layer_change_work_mode(sunxi_disp_t *ctx, int new_mode)
+{
+    __disp_layer_info_t layer_info;
+    uint32_t tmp[4];
+
+    if (ctx->layer_id < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    tmp[2] = (uintptr_t)&layer_info;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_GET_PARA, tmp) < 0)
+        return -1;
+
+    layer_info.mode = new_mode;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->layer_id;
+    tmp[2] = (uintptr_t)&layer_info;
+    return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_PARA, tmp);
+}
+
 int sunxi_layer_reserve(sunxi_disp_t *ctx)
 {
     __disp_layer_info_t layer_info;
@@ -279,23 +301,19 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
     if (ctx->layer_id < 0)
         return -1;
 
-    /* also try to enable scaler for this layer */
+    /* Initially set the layer configuration to something reasonable */
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
     tmp[2] = (uintptr_t)&layer_info;
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_GET_PARA, tmp) < 0)
-        return ctx->layer_id;
+        return -1;
 
-    layer_info.mode      = DISP_LAYER_WORK_MODE_SCALER;
     /* the screen and overlay layers need to be in different pipes */
     layer_info.pipe      = 1;
     layer_info.alpha_en  = 1;
     layer_info.alpha_val = 255;
 
-    /* Initially set "layer_info.fb" to something reasonable in order to avoid
-     * "[DISP] not supported scaler input pixel format:0 in Scaler_sw_para_to_reg1"
-     * warning in dmesg log */
     layer_info.fb.addr[0] = ctx->framebuffer_paddr;
     layer_info.fb.size.width = 1;
     layer_info.fb.size.height = 1;
@@ -306,8 +324,17 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
     tmp[2] = (uintptr_t)&layer_info;
-    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_PARA, tmp) >= 0)
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_PARA, tmp) < 0)
+        return -1;
+
+    /* Now probe the scaler mode to see if there is a free scaler available */
+    if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER) == 0)
         ctx->layer_has_scaler = 1;
+
+    /* Revert back to normal mode */
+    sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL);
+    ctx->layer_scaler_is_enabled = 0;
+    ctx->layer_format = DISP_FORMAT_ARGB8888;
 
     return ctx->layer_id;
 }
@@ -344,6 +371,13 @@ int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t *ctx,
     if (ctx->layer_id < 0)
         return -1;
 
+    if (ctx->layer_scaler_is_enabled) {
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL) == 0)
+            ctx->layer_scaler_is_enabled = 0;
+        else
+            return -1;
+    }
+
     fb.addr[0] = ctx->framebuffer_paddr + offset_in_framebuffer;
     fb.size.width = stride;
     fb.size.height = height;
@@ -356,6 +390,8 @@ int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t *ctx,
     tmp[2] = (uintptr_t)&fb;
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_FB, &tmp) < 0)
         return -1;
+
+    ctx->layer_format = fb.format;
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
@@ -381,6 +417,13 @@ int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
     if (ctx->layer_id < 0)
         return -1;
 
+    if (!ctx->layer_scaler_is_enabled) {
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER) == 0)
+            ctx->layer_scaler_is_enabled = 1;
+        else
+            return -1;
+    }
+
     fb.addr[0] = ctx->framebuffer_paddr + y_offset_in_framebuffer;
     fb.addr[1] = ctx->framebuffer_paddr + u_offset_in_framebuffer;
     fb.addr[2] = ctx->framebuffer_paddr + v_offset_in_framebuffer;
@@ -395,6 +438,8 @@ int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
     tmp[2] = (uintptr_t)&fb;
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_FB, &tmp) < 0)
         return -1;
+
+    ctx->layer_format = fb.format;
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
@@ -423,6 +468,12 @@ int sunxi_layer_show(sunxi_disp_t *ctx)
     if (ctx->layer_id < 0)
         return -1;
 
+    /* YUV formats need to use a scaler */
+    if (ctx->layer_format == DISP_FORMAT_YUV420 && !ctx->layer_scaler_is_enabled) {
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER) == 0)
+            ctx->layer_scaler_is_enabled = 1;
+    }
+
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
     return ioctl(ctx->fd_disp, DISP_CMD_LAYER_OPEN, &tmp);
@@ -435,6 +486,12 @@ int sunxi_layer_hide(sunxi_disp_t *ctx)
 
     if (ctx->layer_id < 0)
         return -1;
+
+    /* If the layer is hidden, there is no need to keep the scaler occupied */
+    if (ctx->layer_scaler_is_enabled) {
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL) == 0)
+            ctx->layer_scaler_is_enabled = 0;
+    }
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
