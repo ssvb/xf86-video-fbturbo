@@ -357,11 +357,12 @@ int sunxi_layer_release(sunxi_disp_t *ctx)
     return 0;
 }
 
-int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t *ctx,
-                                          uint32_t      offset_in_framebuffer,
-                                          int           width,
-                                          int           height,
-                                          int           stride)
+int sunxi_layer_set_rgb_input_buffer(sunxi_disp_t *ctx,
+                                     int           bpp,
+                                     uint32_t      offset_in_framebuffer,
+                                     int           width,
+                                     int           height,
+                                     int           stride)
 {
     __disp_fb_t fb;
     __disp_rect_t rect = { 0, 0, width, height };
@@ -379,11 +380,20 @@ int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t *ctx,
     }
 
     fb.addr[0] = ctx->framebuffer_paddr + offset_in_framebuffer;
-    fb.size.width = stride;
     fb.size.height = height;
-    fb.format = DISP_FORMAT_ARGB8888;
-    fb.seq = DISP_SEQ_ARGB;
-    fb.mode = DISP_MOD_INTERLEAVED;
+    if (bpp == 32) {
+        fb.format = DISP_FORMAT_ARGB8888;
+        fb.seq = DISP_SEQ_ARGB;
+        fb.mode = DISP_MOD_INTERLEAVED;
+        fb.size.width = stride;
+    } else if (bpp == 16) {
+        fb.format = DISP_FORMAT_RGB565;
+        fb.seq = DISP_SEQ_P10;
+        fb.mode = DISP_MOD_INTERLEAVED;
+        fb.size.width = stride * 2;
+    } else {
+        return -1;
+    }
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;

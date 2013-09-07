@@ -121,7 +121,8 @@ int main(int argc, char *argv[])
     /* setup layer window to cover the whole screen */
     sunxi_layer_set_output_window(disp, 0, 0, disp->xres, disp->yres);
     /* setup the layer scanout buffer to the first page in the framebuffer */
-    sunxi_layer_set_x8r8g8b8_input_buffer(disp, 0, disp->xres, disp->yres, disp->xres);
+    sunxi_layer_set_rgb_input_buffer(disp, disp->bits_per_pixel,
+                                     0, disp->xres, disp->yres, disp->xres);
     /* make the layer visible */
     sunxi_layer_show(disp);
 
@@ -148,8 +149,9 @@ int main(int argc, char *argv[])
                          color);
 
         /* schedule the change of layer scanout buffer on next vsync */
-        sunxi_layer_set_x8r8g8b8_input_buffer(disp, yoffs * disp->xres * 4,
-                                              disp->xres, disp->yres, disp->xres);
+        sunxi_layer_set_rgb_input_buffer(disp, disp->bits_per_pixel,
+                                         yoffs * disp->xres * 4,
+                                         disp->xres, disp->yres, disp->xres);
         /* wait for the vsync itself */
         sunxi_wait_for_vsync(disp);
 

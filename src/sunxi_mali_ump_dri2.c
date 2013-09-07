@@ -344,7 +344,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         can_use_overlay = FALSE;
 
     /* TODO: try to support other color depths later */
-    if (pDraw->bitsPerPixel != 32)
+    if (pDraw->bitsPerPixel != 32 && pDraw->bitsPerPixel != 16)
         can_use_overlay = FALSE;
 
     if (disp && disp->framebuffer_size - disp->gfx_layer_size < privates->size * 2) {
@@ -688,8 +688,8 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
 
     /* Activate the overlay */
     sunxi_layer_set_output_window(disp, pDraw->x, pDraw->y, pDraw->width, pDraw->height);
-    sunxi_layer_set_x8r8g8b8_input_buffer(disp, umpbuf->offs, umpbuf->width,
-                                          umpbuf->height, umpbuf->pitch / 4);
+    sunxi_layer_set_rgb_input_buffer(disp, umpbuf->cpp * 8, umpbuf->offs,
+                                     umpbuf->width, umpbuf->height, umpbuf->pitch / 4);
     sunxi_layer_show(disp);
 
     if (mali->bSwapbuffersWait) {

@@ -89,11 +89,12 @@ int sunxi_hw_cursor_hide(sunxi_disp_t *ctx);
 int sunxi_layer_reserve(sunxi_disp_t *ctx);
 int sunxi_layer_release(sunxi_disp_t *ctx);
 
-int sunxi_layer_set_x8r8g8b8_input_buffer(sunxi_disp_t  *ctx,
-                                          uint32_t      offset_in_framebuffer,
-                                          int           width,
-                                          int           height,
-                                          int           stride);
+int sunxi_layer_set_rgb_input_buffer(sunxi_disp_t  *ctx,
+                                     int            bpp,
+                                     uint32_t       offset_in_framebuffer,
+                                     int            width,
+                                     int            height,
+                                     int            stride);
 
 int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
                                         uint32_t      y_offset_in_framebuffer,
