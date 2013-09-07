@@ -56,6 +56,8 @@ typedef struct {
     int                 layer_id;
     int                 layer_has_scaler;
 
+    int                 layer_buf_x, layer_buf_y, layer_buf_w, layer_buf_h;
+    int                 layer_win_x, layer_win_y;
     int                 layer_scaler_is_enabled;
     int                 layer_format;
 

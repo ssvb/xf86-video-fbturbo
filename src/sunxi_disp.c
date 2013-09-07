@@ -401,6 +401,10 @@ int sunxi_layer_set_rgb_input_buffer(sunxi_disp_t *ctx,
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_FB, &tmp) < 0)
         return -1;
 
+    ctx->layer_buf_x = rect.x;
+    ctx->layer_buf_y = rect.y;
+    ctx->layer_buf_w = rect.width;
+    ctx->layer_buf_h = rect.height;
     ctx->layer_format = fb.format;
 
     tmp[0] = ctx->fb_id;
@@ -449,6 +453,10 @@ int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
     if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_FB, &tmp) < 0)
         return -1;
 
+    ctx->layer_buf_x = rect.x;
+    ctx->layer_buf_y = rect.y;
+    ctx->layer_buf_w = rect.width;
+    ctx->layer_buf_h = rect.height;
     ctx->layer_format = fb.format;
 
     tmp[0] = ctx->fb_id;
@@ -459,15 +467,67 @@ int sunxi_layer_set_yuv420_input_buffer(sunxi_disp_t *ctx,
 
 int sunxi_layer_set_output_window(sunxi_disp_t *ctx, int x, int y, int w, int h)
 {
-    __disp_rect_t rect = { x, y, w, h };
+    __disp_rect_t buf_rect = {
+        ctx->layer_buf_x, ctx->layer_buf_y,
+        ctx->layer_buf_w, ctx->layer_buf_h
+    };
+    __disp_rect_t win_rect = { x, y, w, h };
     uint32_t tmp[4];
+    int err;
 
-    if (ctx->layer_id < 0)
+    if (ctx->layer_id < 0 || w <= 0 || h <= 0)
         return -1;
+
+    /*
+     * Handle negative window Y coordinates (workaround a bug).
+     * The Allwinner A10/A13 display controller hardware is expected to
+     * support negative coordinates of the top left corners of the layers.
+     * But there is some bug either in the kernel driver or in the hardware,
+     * which messes up the picture on screen when the Y coordinate is negative
+     * for YUV layer. Negative X coordinates are not affected. RGB formats
+     * are not affected too.
+     *
+     * We fix this by just recalculating which part of the buffer in memory
+     * corresponds to Y=0 on screen and adjust the input buffer settings.
+     */
+    if (ctx->layer_format == DISP_FORMAT_YUV420 &&
+                                  (y < 0 || ctx->layer_win_y < 0)) {
+        if (win_rect.y < 0) {
+            int y_shift = -(double)y * buf_rect.height / win_rect.height;
+            buf_rect.y      += y_shift;
+            buf_rect.height -= y_shift;
+            win_rect.height += win_rect.y;
+            win_rect.y       = 0;
+        }
+
+        if (buf_rect.height <= 0 || win_rect.height <= 0) {
+            /* No part of the window is visible. Just construct a fake rectangle
+             * outside the screen as a window placement (but with a non-negative Y
+             * coordinate). Do this to avoid passing bogus negative heights to
+             * the kernel driver (who knows how it would react?) */
+            win_rect.x = -1;
+            win_rect.y = 0;
+            win_rect.width = 1;
+            win_rect.height = 1;
+            tmp[0] = ctx->fb_id;
+            tmp[1] = ctx->layer_id;
+            tmp[2] = (uintptr_t)&win_rect;
+            return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_SCN_WINDOW, &tmp);
+        }
+
+        tmp[0] = ctx->fb_id;
+        tmp[1] = ctx->layer_id;
+        tmp[2] = (uintptr_t)&buf_rect;
+        if ((err = ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_SRC_WINDOW, &tmp)))
+            return err;
+    }
+    /* Save the new non-adjusted window position */
+    ctx->layer_win_x = x;
+    ctx->layer_win_y = y;
 
     tmp[0] = ctx->fb_id;
     tmp[1] = ctx->layer_id;
-    tmp[2] = (uintptr_t)&rect;
+    tmp[2] = (uintptr_t)&win_rect;
     return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_SCN_WINDOW, &tmp);
 }
 
