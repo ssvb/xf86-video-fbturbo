@@ -920,6 +920,20 @@ static void DisableHWCursor(ScrnInfoPtr pScrn)
     }
 }
 
+static unsigned long ump_get_size_from_secure_id(ump_secure_id secure_id)
+{
+    unsigned long size;
+    ump_handle handle;
+    if (secure_id == UMP_INVALID_SECURE_ID)
+        return 0;
+    handle = ump_handle_create_from_secure_id(secure_id);
+    if (handle == UMP_INVALID_MEMORY_HANDLE)
+        return 0;
+    size = ump_size_get(handle);
+    ump_reference_release(handle);
+    return size;
+}
+
 SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
                                   Bool      bUseOverlay,
                                   Bool      bSwapbuffersWait)
@@ -968,6 +982,14 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
             xf86DrvMsg(pScreen->myNum, X_INFO,
                   "GET_UMP_SECURE_ID_SUNXI_FB ioctl failed, overlays can't be used\n");
             mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
+        }
+        if (mali->ump_alternative_fb_secure_id == UMP_INVALID_SECURE_ID ||
+            ump_get_size_from_secure_id(mali->ump_alternative_fb_secure_id) !=
+                                          disp->framebuffer_size) {
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "UMP does not wrap the whole framebuffer, overlays can't be used\n");
+            mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
+            mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
         }
     }
     else {
