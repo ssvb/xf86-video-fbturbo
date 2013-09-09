@@ -991,6 +991,18 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
             mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
             mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
         }
+        if (disp->framebuffer_size - disp->gfx_layer_size <
+                                                 disp->xres * disp->yres * 4 * 2) {
+            int needed_fb_num = (disp->xres * disp->yres * 4 * 2 +
+                                 disp->gfx_layer_size - 1) / disp->gfx_layer_size + 1;
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                "tear-free zero-copy double buffering needs more video memory\n");
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                "please set fb0_framebuffer_num >= %d in the fex file\n", needed_fb_num);
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                "and sunxi_fb_mem_reserve >= %d in the kernel cmdline\n",
+                (needed_fb_num * disp->gfx_layer_size + 1024 * 1024 - 1) / (1024 * 1024));
+        }
     }
     else {
         /* Try to allocate small dummy UMP buffers to secure id 1 and 2 */
