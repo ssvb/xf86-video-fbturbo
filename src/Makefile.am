@@ -24,11 +24,11 @@
 # _ladir passes a dummy rpath to libtool so the thing will actually link
 # TODO: -nostdlib/-Bstatic/-lgcc platform magic, not installing the .a, etc.
 AM_CFLAGS = @XORG_CFLAGS@
-sunxifb_drv_la_LTLIBRARIES = sunxifb_drv.la
-sunxifb_drv_la_LDFLAGS = -module -avoid-version
-sunxifb_drv_ladir = @moduledir@/drivers
+fbturbo_drv_la_LTLIBRARIES = fbturbo_drv.la
+fbturbo_drv_la_LDFLAGS = -module -avoid-version
+fbturbo_drv_ladir = @moduledir@/drivers
 
-sunxifb_drv_la_SOURCES = \
+fbturbo_drv_la_SOURCES = \
          compat-api.h \
          uthash.h \
          arm_asm.S \
@@ -51,7 +51,7 @@ sunxifb_drv_la_SOURCES = \
          sunxi_video.h
 
 if HAVE_LIBUMP
-sunxifb_drv_la_SOURCES += \
+fbturbo_drv_la_SOURCES += \
          sunxi_mali_ump_dri2.c \
          sunxi_mali_ump_dri2.h
 endif

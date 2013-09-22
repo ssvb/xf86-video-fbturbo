@@ -1,10 +1,10 @@
-xf86-video-sunxifb - video driver, primarily optimized for the devices powered
+xf86-video-fbturbo - video driver, primarily optimized for the devices powered
 by the Allwinner SoC (A10, A13, A20). It can use some of the 2D/3D hardware
 acceleration features.
 
 And because this driver is based on xf86-video-fbdev (with none of the
 original features stripped), it actually supports all the same hardware
-as xf86-video-fbdev. Essentially, xf86-video-sunxifb can be just used as
+as xf86-video-fbdev. Essentially, xf86-video-fbturbo can be just used as
 a drop-in replacement and run on practically any Linux system. There will
 be no real difference on x86, but any ARM based system should see better
 performance thanks to some additional optimizations (the elimination of
@@ -40,7 +40,7 @@ XV overlay is supported on Allwinner A10/A13/A20.
 
 == Installation instructions ==
 
-https://github.com/ssvb/xf86-video-sunxifb/wiki/Installation
+https://github.com/ssvb/xf86-video-fbturbo/wiki/Installation
 
 == Troubleshooting ==
 
@@ -48,7 +48,7 @@ If something does not work right, it's a good idea to check dmesg log and
 /var/log/Xorg.0.log for any suspicious error messages or warnings.
 Some important notes:
 
-1. The messages "(EE) SUNXIFB(0): FBIOPUTCMAP: Invalid argument" in
+1. The messages "(EE) FBTURBO(0): FBIOPUTCMAP: Invalid argument" in
    Xorg.0.log can be safely ignored. They are harmless.
 
 2. If you are limited by exactly 60 FPS in benchmarks and want to see more,
@@ -70,8 +70,6 @@ Some important notes:
    of the individual tests from glmark2-es2 should run with more
    than 200-300 FPS.
 
-4. https://github.com/ssvb/xf86-video-sunxifb/wiki/Troubleshooting
-
 == Contacts. Reporting bugs ==
 
 If something from the list above does not seem to work right, then that's
@@ -81,7 +79,7 @@ at freenode.net irc. I'm known as "ssvb" there. The platforms other than
 allwinner/sunxi are also supported.
 
 Or alternatively just use the issue tracker for reporting bugs:
-     https://github.com/ssvb/xf86-video-sunxifb/issues
+     https://github.com/ssvb/xf86-video-fbturbo/issues
 
 == Links to the other interesting projects ==
 

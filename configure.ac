@@ -22,10 +22,10 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-sunxifb],
+AC_INIT([xf86-video-fbturbo],
         [0.3.1],
-        [https://github.com/ssvb/xf86-video-sunxifb],
-        [xf86-video-sunxifb])
+        [https://github.com/ssvb/xf86-video-fbturbo],
+        [xf86-video-fbturbo])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
@@ -84,7 +84,7 @@ fi
 
 # Checks for libraries.
 
-# add -pthread to workaround https://github.com/ssvb/xf86-video-sunxifb/issues/11
+# add -pthread to workaround https://github.com/ssvb/xf86-video-fbturbo/issues/11
 save_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -pthread" 
 
@@ -104,7 +104,7 @@ fi
 
 AC_SUBST([moduledir])
 
-DRIVER_NAME=sunxifb
+DRIVER_NAME=fbturbo
 AC_SUBST([DRIVER_NAME])
 
 AC_CONFIG_FILES([

@@ -1,18 +1,18 @@
 .\" shorthand for double quote that works everywhere.
 .ds q \N'34'
-.TH SUNXIFB __drivermansuffix__ __vendorversion__
+.TH FBTURBO __drivermansuffix__ __vendorversion__
 .SH NAME
-sunxifb \- video driver for Allwinner and other ARM-based devices
+fbturbo \- video driver for Allwinner and other ARM-based devices
 .SH SYNOPSIS
 .nf
 .B "Section \*qDevice\*q"
 .BI "  Identifier \*q"  devname \*q
-.B  "  Driver \*qsunxifb\*q"
+.B  "  Driver \*qfbturbo\*q"
 \ \ ...
 .B EndSection
 .fi
 .SH DESCRIPTION
-.B sunxifb
+.B fbturbo
 is an __xservername__ driver for Allwinner and other ARM-based devices,
 derived from
 .B fbdev
@@ -26,7 +26,7 @@ framebuffer color depths are 16 (RGB565) and 24 (XRGB8888), the other color
 depths may be supported too. Multi-head configurations are supported.
 .SH SUPPORTED HARDWARE
 The 
-.B sunxifb
+.B fbturbo
 driver supports all hardware where a framebuffer driver is available and
 uses the os-specific submodule fbdevhw(__drivermansuffix__) to talk
 to the kernel
@@ -45,7 +45,7 @@ this driver.
 .PP
 For this driver it is not required to specify modes in the screen 
 section of the config file.  The
-.B sunxifb
+.B fbturbo
 driver can pick up the currently used video mode from the framebuffer 
 driver and will use it if there are no video modes configured.
 .PP
