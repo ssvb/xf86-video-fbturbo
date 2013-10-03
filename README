@@ -16,6 +16,9 @@ reads, automatic backing store management for faster window moves).
 Hardware accelerated window moving/scrolling on Allwinner A10/A20 (using the
 G2D Mixer Processor).
 
+Hardware accelerated window moving/scrolling on Raspberry Pi (using the BCM2835
+DMA Controller)
+
 == 3D graphics acceleration features ==
 
 First a disclaimer to prevent any possible misunderstanding. The Xorg DDX
