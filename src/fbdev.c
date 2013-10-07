@@ -942,11 +942,22 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 
 	if (!fPtr->SunxiG2D_private && fPtr->fb_copyarea_private) {
-		fb_copyarea_t *fb = fPtr->fb_copyarea_private;
-		if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &fb->blt2d))) {
-			fb->fallback_blt2d = &cpu_backend->blt2d;
+		if (!(accelmethod = xf86GetOptValString(fPtr->Options, OPTION_ACCELMETHOD)) ||
+						strcasecmp(accelmethod, "copyarea") == 0) {
+			fb_copyarea_t *fb = fPtr->fb_copyarea_private;
+			if ((fPtr->SunxiG2D_private = SunxiG2D_Init(pScreen, &fb->blt2d))) {
+				fb->fallback_blt2d = &cpu_backend->blt2d;
+				xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+				           "enabled fbdev copyarea acceleration\n");
+			}
+			else {
+				xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+				           "failed to enable fbdev copyarea acceleration\n");
+			}
+		}
+		else {
 			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-				   "enabled fbdev copyarea acceleration\n");
+			           "fbdev copyarea acceleration is disabled via AccelMethod option\n");
 		}
 	}
 
