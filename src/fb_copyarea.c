@@ -39,6 +39,9 @@
  */
 #define FBIOCOPYAREA		_IOW('z', 0x21, struct fb_copyarea)
 
+/* Fallback to CPU when handling less than COPYAREA_BLT_SIZE_THRESHOLD pixels */
+#define COPYAREA_BLT_SIZE_THRESHOLD 90
+
 fb_copyarea_t *fb_copyarea_init(const char *device, void *xserver_fbmem)
 {
     fb_copyarea_t *ctx = calloc(sizeof(fb_copyarea_t), 1);
@@ -196,6 +199,9 @@ int fb_copyarea_blt(void               *self,
         src_bits != dst_bits || src_bits != framebuffer_addr) {
         return FALLBACK_BLT();
     }
+
+    if (w * h < COPYAREA_BLT_SIZE_THRESHOLD)
+        return FALLBACK_BLT();
 
     copyarea.sx = src_x;
     copyarea.sy = src_y;
