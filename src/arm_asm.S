@@ -505,4 +505,48 @@ asm_function aligned_fetch_fbmem_to_scratch_vfp
     .unreq      SRC
 .endfunc
 
+asm_function aligned_fetch_fbmem_to_scratch_arm
+    SIZE        .req r0
+    DST         .req r1
+    SRC         .req r2
+
+    push        {r4-r11, lr}
+    subs        SIZE, #128
+    blt         1f
+0:
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+    subs        SIZE, SIZE, #128
+    bge         0b
+1:
+    tst         SIZE, #64
+    beq         1f
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+1:
+    tst         SIZE, #32
+    beq         1f
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+1:
+    tst         SIZE, #31
+    beq         1f
+    ldmia       SRC!, {r4-r11}
+    stmia       DST!, {r4-r11}
+1:
+    pop         {r4-r11, pc}
+
+    .unreq      SIZE
+    .unreq      DST
+    .unreq      SRC
+.endfunc
+
 #endif

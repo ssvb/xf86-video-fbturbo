@@ -95,6 +95,7 @@ static int parse_proc_cpuinfo(cpuinfo_t *cpuinfo)
             cpuinfo->has_arm_edsp = find_feature(val, "edsp");
             cpuinfo->has_arm_vfp  = find_feature(val, "vfp");
             cpuinfo->has_arm_neon = find_feature(val, "neon");
+            cpuinfo->has_arm_wmmx = find_feature(val, "iwmmxt");
         }
         else if ((val = cpuinfo_match_prefix(buffer, "CPU implementer"))) {
             if (sscanf(val, "%i", &cpuinfo->arm_implementer) != 1) {
@@ -175,6 +176,8 @@ cpuinfo_t *cpuinfo_init()
         cpuinfo->processor_name = strdup("ARM Cortex-A5");
     } else if (cpuinfo->arm_implementer == 0x41 && cpuinfo->arm_part == 0xB76) {
         cpuinfo->processor_name = strdup("ARM1176");
+    } else if (cpuinfo->arm_implementer == 0x56 && cpuinfo->arm_part == 0x581) {
+        cpuinfo->processor_name = strdup("Marvell PJ4");
     } else {
         cpuinfo->processor_name = strdup("Unknown");
     }

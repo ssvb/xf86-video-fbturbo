@@ -36,6 +36,7 @@ typedef struct {
     int has_arm_edsp;
     int has_arm_vfp;
     int has_arm_neon;
+    int has_arm_wmmx;
     /* The user-friendly CPU description string (usable for logs, etc.) */
     char *processor_name;
 } cpuinfo_t;

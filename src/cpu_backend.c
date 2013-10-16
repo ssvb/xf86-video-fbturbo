@@ -39,12 +39,7 @@ void memcpy_armv5te(void *dst, const void *src, int size);
 void writeback_scratch_to_mem_neon(int size, void *dst, const void *src);
 void aligned_fetch_fbmem_to_scratch_neon(int size, void *dst, const void *src);
 void aligned_fetch_fbmem_to_scratch_vfp(int size, void *dst, const void *src);
-
-static always_inline void
-aligned_fetch_fbmem_to_scratch_arm(int size, void *dst, const void *src)
-{
-    memcpy_armv5te(dst, src, size);
-}
+void aligned_fetch_fbmem_to_scratch_arm(int size, void *dst, const void *src);
 
 static always_inline void
 writeback_scratch_to_mem_arm(int size, void *dst, const void *src)
@@ -124,6 +119,14 @@ twopass_memmove_vfp(void *dst, const void *src, size_t size)
 {
     twopass_memmove(dst, src, size,
                     aligned_fetch_fbmem_to_scratch_vfp,
+                    writeback_scratch_to_mem_arm);
+}
+
+static void
+twopass_memmove_arm(void *dst, const void *src, size_t size)
+{
+    twopass_memmove(dst, src, size,
+                    aligned_fetch_fbmem_to_scratch_arm,
                     writeback_scratch_to_mem_arm);
 }
 
@@ -244,6 +247,27 @@ overlapped_blt_vfp(void     *self,
                           twopass_memmove_vfp);
 }
 
+static int
+overlapped_blt_arm(void     *self,
+                   uint32_t *src_bits,
+                   uint32_t *dst_bits,
+                   int       src_stride,
+                   int       dst_stride,
+                   int       src_bpp,
+                   int       dst_bpp,
+                   int       src_x,
+                   int       src_y,
+                   int       dst_x,
+                   int       dst_y,
+                   int       width,
+                   int       height)
+{
+    return overlapped_blt(self, src_bits, dst_bits, src_stride, dst_stride,
+                          src_bpp, dst_bpp, src_x, src_y, dst_x, dst_y,
+                          width, height,
+                          twopass_memmove_arm);
+}
+
 #endif
 
 /* An empty, always failing implementation */
@@ -287,6 +311,11 @@ cpu_backend_t *cpu_backend_init(uint8_t *uncached_buffer,
     {
         /* NEON works better on Cortex-A8 */
         ctx->blt2d.overlapped_blt = overlapped_blt_neon;
+    }
+    if (ctx->cpuinfo->has_arm_wmmx)
+    {
+        /* ARM LDM/STM works better than VFP/WMMX on Marvell PJ4 */
+        ctx->blt2d.overlapped_blt = overlapped_blt_arm;
     }
     else if (ctx->cpuinfo->has_arm_vfp && ctx->cpuinfo->has_arm_edsp) {
         /* VFP works better on Cortex-A9, Cortex-A15 and maybe everything else */
