@@ -312,8 +312,7 @@ cpu_backend_t *cpu_backend_init(uint8_t *uncached_buffer,
         /* NEON works better on Cortex-A8 */
         ctx->blt2d.overlapped_blt = overlapped_blt_neon;
     }
-    if (ctx->cpuinfo->has_arm_wmmx)
-    {
+    else if (ctx->cpuinfo->has_arm_wmmx) {
         /* ARM LDM/STM works better than VFP/WMMX on Marvell PJ4 */
         ctx->blt2d.overlapped_blt = overlapped_blt_arm;
     }
