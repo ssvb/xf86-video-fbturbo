@@ -32,7 +32,11 @@
 #include <ump/ump.h>
 #include <ump/ump_ref_drv.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "xorgVersion.h"
 #include "xf86_OSproc.h"
@@ -332,7 +336,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
     }
 
     /* We could not allocate disp layer or get framebuffer secure id */
-    if (!disp || mali->ump_fb_secure_id == UMP_INVALID_SECURE_ID)
+    if (!disp || mali->ump_fb_odd_secure_id == UMP_INVALID_SECURE_ID)
         can_use_overlay = FALSE;
 
     /* Overlay is already used by a different window */
@@ -380,7 +384,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                           !(window_state->buf_request_cnt & 1) &&
                           (pDraw->width != window_state->width ||
                            pDraw->height != window_state->height) &&
-                          mali->ump_null_secure_id <= 2;
+                          mali->has_window_resize_bug;
 
     if (can_use_overlay) {
         /* Release unneeded buffers */
@@ -392,15 +396,15 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr = disp->framebuffer_addr;
 
-        buffer->name = mali->ump_fb_secure_id;
-
         if (window_state->buf_request_cnt & 1) {
             buffer->flags = disp->gfx_layer_size;
             privates->extra_flags |= UMPBUF_MUST_BE_ODD_FRAME;
+            buffer->name = mali->ump_fb_odd_secure_id;
         }
         else {
             buffer->flags = disp->gfx_layer_size + privates->size;
             privates->extra_flags |= UMPBUF_MUST_BE_EVEN_FRAME;
+            buffer->name = mali->ump_fb_even_secure_id;
         }
 
         umpbuf_add_to_queue(window_state, privates);
@@ -410,7 +414,7 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
 
         if (need_window_resize_bug_workaround) {
             DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
-            buffer->name = mali->ump_alternative_fb_secure_id;
+            buffer->name = mali->ump_fb_r3p0_workaround_secure_id;
         }
     }
     else {
@@ -934,12 +938,44 @@ static unsigned long ump_get_size_from_secure_id(ump_secure_id secure_id)
     return size;
 }
 
+/*
+ * Mali400 kernel module version detection code, borrowed from
+ *        https://github.com/linux-sunxi/sunxi-mali
+ */
+
+#define MALI_KERNEL_VERSION_R3P2 19
+
+#define MALI_GET_API_VERSION      _IOWR(0x82, 5, struct mali_get_api_version *)
+#define MALI_GET_API_VERSION_R3P1 _IOWR(0x82, 3, struct mali_get_api_version *)
+
+struct mali_api_version {
+    unsigned int empty;
+    unsigned int version;
+    int compatible;
+};
+
+static int get_mali_kernel_version(void)
+{
+    int fd;
+    struct mali_api_version api_version;
+    if ((fd = open("/dev/mali", O_RDONLY)) == -1)
+        return 0;
+
+    if (ioctl(fd, MALI_GET_API_VERSION, &api_version))
+        if (ioctl(fd, MALI_GET_API_VERSION_R3P1, &api_version))
+            return api_version.version = 0;
+
+    close(fd);
+    return api_version.version;
+}
+
 SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
                                   Bool      bUseOverlay,
                                   Bool      bSwapbuffersWait)
 {
     int drm_fd;
     DRI2InfoRec info;
+    int mali_kernel_version;
     SunxiMaliDRI2 *mali;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     sunxi_disp_t *disp = SUNXI_DISP(pScrn);
@@ -968,31 +1004,77 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
         return NULL;
     }
 
-    mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
+    /* Get the mali kernel module version */
+    mali_kernel_version = get_mali_kernel_version();
+
+    /* Check if the r3p0 window resize bug workaround is necessary */
+    mali->has_window_resize_bug = mali_kernel_version < MALI_KERNEL_VERSION_R3P2;
+
+    mali->ump_fb_odd_secure_id = UMP_INVALID_SECURE_ID;
+    mali->ump_fb_even_secure_id = UMP_INVALID_SECURE_ID;
+    mali->ump_fb_r3p0_workaround_secure_id = UMP_INVALID_SECURE_ID;
+    mali->ump_null_secure_id = UMP_INVALID_SECURE_ID;
+    mali->ump_null_handle1 = UMP_INVALID_MEMORY_HANDLE;
+    mali->ump_null_handle2 = UMP_INVALID_MEMORY_HANDLE;
 
     if (disp && bUseOverlay) {
-        /* Try to get UMP framebuffer wrapper with secure id 1 */
-        ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &mali->ump_alternative_fb_secure_id);
-        /* Try to allocate a small dummy UMP buffer to secure id 2 */
-        mali->ump_null_handle1 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
-        if (mali->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
-            mali->ump_null_secure_id = ump_secure_id_get(mali->ump_null_handle1);
-        mali->ump_null_handle2 = UMP_INVALID_MEMORY_HANDLE;
-        /* Try to get UMP framebuffer for the secure id other than 1 and 2 */
-        if (ioctl(disp->fd_fb, GET_UMP_SECURE_ID_SUNXI_FB, &mali->ump_fb_secure_id) ||
-                                   mali->ump_fb_secure_id == UMP_INVALID_SECURE_ID) {
-            xf86DrvMsg(pScreen->myNum, X_INFO,
-                  "GET_UMP_SECURE_ID_SUNXI_FB ioctl failed, overlays can't be used\n");
-            mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
+        int err = 0;
+
+        if (mali_kernel_version < MALI_KERNEL_VERSION_R3P2)
+        {
+            /* For r3p0 mali blob:
+             *    secure id 1 - wraps the whole framebuffer
+             *    secure id 2 - a small dummy buffer (kind of /dev/null)
+             *    secure id 3 - wraps the whole framebuffer
+             *
+             *  ump_fb_odd_secure_id = ump_fb_even_secure_id = secure id 3
+             *  ump_null_secure_id = secure id 2
+             *  ump_fb_r3p0_workaround_secure_id = secure id 1
+             */
+            err |= ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &mali->ump_fb_r3p0_workaround_secure_id);
+            mali->ump_null_handle1 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+            if (mali->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
+                mali->ump_null_secure_id = ump_secure_id_get(mali->ump_null_handle1);
+            err |= ioctl(disp->fd_fb, GET_UMP_SECURE_ID_SUNXI_FB, &mali->ump_fb_odd_secure_id);
+            mali->ump_fb_even_secure_id = mali->ump_fb_odd_secure_id;
         }
-        if (mali->ump_alternative_fb_secure_id == UMP_INVALID_SECURE_ID ||
-            ump_get_size_from_secure_id(mali->ump_alternative_fb_secure_id) !=
-                                          disp->framebuffer_size) {
-            xf86DrvMsg(pScreen->myNum, X_INFO,
-                  "UMP does not wrap the whole framebuffer, overlays can't be used\n");
-            mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
-            mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
+        else {
+            /* For r3p2 mali blob:
+             *    secure id 1 - wraps the whole framebuffer
+             *    secure id 2 - wraps the whole framebuffer
+             *    secure id 3 - wraps the whole framebuffer
+             *
+             *  ump_fb_odd_secure_id  = secure id 1
+             *  ump_fb_even_secure_id = secure id 2
+             */
+            err |= ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &mali->ump_fb_odd_secure_id);
+            err |= ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF2, &mali->ump_fb_even_secure_id);
+            err |= ioctl(disp->fd_fb, GET_UMP_SECURE_ID_SUNXI_FB, &mali->ump_fb_r3p0_workaround_secure_id);
+            mali->ump_null_handle1 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
+            if (mali->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
+                mali->ump_null_secure_id = ump_secure_id_get(mali->ump_null_handle1);
         }
+
+        if (err || mali->ump_null_secure_id == UMP_INVALID_SECURE_ID ||
+            mali->ump_fb_r3p0_workaround_secure_id == UMP_INVALID_SECURE_ID ||
+            mali->ump_fb_even_secure_id == UMP_INVALID_SECURE_ID ||
+            mali->ump_fb_odd_secure_id == UMP_INVALID_SECURE_ID) {
+
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "One of the GET_UMP_SECURE_ID_* ioctls failed\n");
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "This usually indicates a problem in the linux kernel or its configuration\n");
+        }
+        else if (ump_get_size_from_secure_id(mali->ump_fb_odd_secure_id) != disp->framebuffer_size ||
+                 ump_get_size_from_secure_id(mali->ump_fb_even_secure_id) != disp->framebuffer_size) {
+
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "UMP does not wrap the whole framebuffer\n");
+            xf86DrvMsg(pScreen->myNum, X_INFO,
+                  "This usually indicates a problem in the linux kernel or its configuration\n");
+        }
+
+        /* Just a hint for the user if the framebuffer size is too small */
         if (disp->framebuffer_size - disp->gfx_layer_size <
                                                  disp->xres * disp->yres * 4 * 2) {
             int needed_fb_num = (disp->xres * disp->yres * 4 * 2 +
@@ -1012,16 +1094,17 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
         if (mali->ump_null_handle1 != UMP_INVALID_MEMORY_HANDLE)
             mali->ump_null_secure_id = ump_secure_id_get(mali->ump_null_handle1);
         mali->ump_null_handle2 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
-        /* No UMP wrappers for the framebuffer are available */
-        mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
     }
 
-    if (mali->ump_null_secure_id > 2) {
+    if (mali->ump_null_secure_id > 2 && mali->has_window_resize_bug) {
+        /* Could not allocate a magic secure id number 1 or 2 */
         xf86DrvMsg(pScreen->myNum, X_INFO,
                    "warning, can't workaround Mali r3p0 window resize bug\n");
+        /* So there is no point even trying to workaround this bug */
+        mali->has_window_resize_bug = FALSE;
     }
 
-    if (disp && mali->ump_fb_secure_id != UMP_INVALID_SECURE_ID)
+    if (disp && mali->ump_fb_odd_secure_id != UMP_INVALID_SECURE_ID)
         xf86DrvMsg(pScreen->myNum, X_INFO,
               "enabled display controller hardware overlays for DRI2\n");
     else if (bUseOverlay)
