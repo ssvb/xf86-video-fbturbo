@@ -968,6 +968,8 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
         return NULL;
     }
 
+    mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
+
     if (disp && bUseOverlay) {
         /* Try to get UMP framebuffer wrapper with secure id 1 */
         ioctl(disp->fd_fb, GET_UMP_SECURE_ID_BUF1, &mali->ump_alternative_fb_secure_id);
@@ -1012,7 +1014,6 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
         mali->ump_null_handle2 = ump_ref_drv_allocate(4096, UMP_REF_DRV_CONSTRAINT_NONE);
         /* No UMP wrappers for the framebuffer are available */
         mali->ump_fb_secure_id = UMP_INVALID_SECURE_ID;
-        mali->ump_alternative_fb_secure_id = UMP_INVALID_SECURE_ID;
     }
 
     if (mali->ump_null_secure_id > 2) {
