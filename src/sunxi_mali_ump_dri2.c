@@ -387,11 +387,6 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
                           mali->has_window_resize_bug;
 
     if (can_use_overlay) {
-        /* Release unneeded buffers */
-        if (window_state->ump_mem_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
-        window_state->ump_mem_buffer_ptr = NULL;
-
         /* Use offscreen part of the framebuffer as an overlay */
         privates->handle = UMP_INVALID_MEMORY_HANDLE;
         privates->addr = disp->framebuffer_addr;
@@ -418,46 +413,16 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         }
     }
     else {
-        /* Release unneeded buffers */
-        if (window_state->ump_back_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
-        window_state->ump_back_buffer_ptr = NULL;
-        if (window_state->ump_front_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_front_buffer_ptr);
-        window_state->ump_front_buffer_ptr = NULL;
-
+/* FIXME
         if (need_window_resize_bug_workaround) {
             DebugMsg("DRI2 buffers size mismatch detected, trying to recover\n");
-
-            if (window_state->ump_mem_buffer_ptr)
-                unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
-            window_state->ump_mem_buffer_ptr = NULL;
 
             privates->handle = UMP_INVALID_MEMORY_HANDLE;
             privates->addr   = NULL;
             buffer->name     = mali->ump_null_secure_id;
             return validate_dri2buf(buffer);
         }
-
-        /* Reuse the existing UMP buffer if we can */
-        if (window_state->ump_mem_buffer_ptr &&
-            window_state->ump_mem_buffer_ptr->size == privates->size &&
-            window_state->ump_mem_buffer_ptr->depth == privates->depth &&
-            window_state->ump_mem_buffer_ptr->width == privates->width &&
-            window_state->ump_mem_buffer_ptr->height == privates->height) {
-
-            free(privates);
-
-            privates = window_state->ump_mem_buffer_ptr;
-            privates->refcount++;
-            buffer->driverPrivate = privates;
-            buffer->name = ump_secure_id_get(privates->handle);
-
-            DebugMsg("Reuse the already allocated UMP buffer %p, ump=%d\n",
-                     privates, buffer->name);
-            return validate_dri2buf(buffer);
-        }
-
+*/
         /* Allocate UMP memory buffer */
 #ifdef HAVE_LIBUMP_CACHE_CONTROL
         privates->handle = ump_ref_drv_allocate(privates->size,
@@ -478,12 +443,10 @@ static DRI2Buffer2Ptr MaliDRI2CreateBuffer(DrawablePtr  pDraw,
         privates->addr = ump_mapped_pointer_get(privates->handle);
         buffer->name = ump_secure_id_get(privates->handle);
         buffer->flags = 0;
+        privates->extra_flags = (window_state->buf_request_cnt & 1) ?
+                                UMPBUF_MUST_BE_ODD_FRAME : UMPBUF_MUST_BE_EVEN_FRAME;
 
-        /* Replace the old UMP buffer with the newly allocated one */
-        if (window_state->ump_mem_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
-
-        window_state->ump_mem_buffer_ptr = privates;
+        umpbuf_add_to_queue(window_state, privates);
         privates->refcount++;
     }
 
@@ -669,9 +632,6 @@ static void MaliDRI2CopyRegion(DrawablePtr   pDraw,
         umpbuf = window_state->ump_front_buffer_ptr;
     }
 
-    if (!umpbuf)
-        umpbuf = window_state->ump_mem_buffer_ptr;
-
     if (!umpbuf || !umpbuf->addr)
         return;
 
@@ -789,8 +749,7 @@ DestroyWindow(WindowPtr pWin)
     if (window_state) {
         DebugMsg("Free DRI2 bookkeeping for window %p\n", pWin);
         HASH_DEL(mali->HashWindowState, window_state);
-        if (window_state->ump_mem_buffer_ptr)
-            unref_ump_buffer_info(window_state->ump_mem_buffer_ptr);
+        /* Empty queue? */
         if (window_state->ump_back_buffer_ptr)
             unref_ump_buffer_info(window_state->ump_back_buffer_ptr);
         if (window_state->ump_front_buffer_ptr)

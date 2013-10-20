@@ -89,9 +89,6 @@ typedef struct
     /* the number of back/front buffer swaps */
     unsigned int            buf_swap_cnt;
 
-    /* allocated UMP buffer (shared between back and front DRI2 buffers) */
-    UMPBufferInfoPtr        ump_mem_buffer_ptr;
-
     /* UMP buffers for hardware overlay and double buffering */
     UMPBufferInfoPtr        ump_back_buffer_ptr;
     UMPBufferInfoPtr        ump_front_buffer_ptr;
