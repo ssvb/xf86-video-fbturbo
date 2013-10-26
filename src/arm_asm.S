@@ -41,6 +41,10 @@
 
 .macro asm_function function_name
     .global \function_name
+#ifdef __ELF__
+    .hidden \function_name
+    .type \function_name, %function
+#endif
 .func \function_name
 \function_name:
 .endm
