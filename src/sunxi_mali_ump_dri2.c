@@ -1037,7 +1037,7 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
     info.version = 3;
 
     info.driverName = "lima";
-    info.deviceName = "/dev/dri/card0";
+    info.deviceName = drmGetDeviceNameFromFd(drm_fd);
     info.fd = drm_fd;
 
     info.CreateBuffer = MaliDRI2CreateBuffer;
