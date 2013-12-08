@@ -31,6 +31,10 @@
 
 #define UMPBUF_MUST_BE_ODD_FRAME  1
 #define UMPBUF_MUST_BE_EVEN_FRAME 2
+#define UMPBUF_PASSED_ORDER_CHECK 4
+
+/* The number of bytes randomly sampled from UMP buffer to detect its change */
+#define RANDOM_SAMPLES_COUNT      64
 
 /* Data structure with the information about an UMP buffer */
 typedef struct
@@ -54,6 +58,11 @@ typedef struct
     unsigned int            pitch;
     unsigned int            cpp;
     unsigned int            offs;
+
+    /* This allows us to track buffer modifications */
+    Bool                    has_checksum;
+    uint32_t                checksum;
+    uint32_t                checksum_seed;
 } UMPBufferInfoRec, *UMPBufferInfoPtr;
 
 /*
