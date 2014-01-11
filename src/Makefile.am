@@ -50,7 +50,9 @@ fbturbo_drv_la_SOURCES = \
          sunxi_disp_hwcursor.c \
          sunxi_disp_hwcursor.h \
          sunxi_video.c \
-         sunxi_video.h
+         sunxi_video.h \
+         sunxi_disp_ioctl.h \
+         g2d_driver.h
 
 if HAVE_LIBUMP
 fbturbo_drv_la_SOURCES += \
