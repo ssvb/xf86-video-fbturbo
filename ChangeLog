@@ -1,0 +1,2415 @@
+commit 4e852d2ccb460e85ace7ba3a2c140ba5c0270aa5
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jan 11 21:43:36 2014 +0200
+
+    Pre-release version bump to 0.4.0
+    
+    It makes sense to make a formal release. Providing the
+    pre-generated 'configure' script should make it less
+    likely for people to mess with autotools and encounter
+    troubles:
+    
+        https://github.com/ssvb/xf86-video-fbturbo/issues/28
+        https://github.com/ssvb/xf86-video-fbturbo/issues/25
+    
+    Also it's likely that this particular xf86-video-fbturbo
+    git master snapshot was used in:
+    
+        http://www.raspberrypi.org/archives/5580
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit dae7b89fbada5a94a64f7e96616c954709e60737
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jan 11 22:22:42 2014 +0200
+
+    autotools: add missing headers to Makefile.am to fix 'make distcheck'
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit eed17d5586c3b4dfcf0b5976e8b947b171d4897c
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Dec 9 01:44:36 2013 +0200
+
+    mali: detect and workaround mismatch between back and front buffers
+    
+    After window creation or resize, the mali blob on the client side
+    requests two dri2 buffers (for back and front) from the ddx. The
+    problem is that the 'swap' and 'get_buffer' operations are executed
+    out of order relative to each other and we may have different
+    possible patterns of dri2 communication:
+    
+    1. swap swap swap swap get_buffer swap get_buffer swap swap ...
+    2. swap swap swap get_buffer swap swap get_buffer swap swap ...
+    
+    A major annoyance is that both mali blob on the client side and
+    the ddx driver in xserver need have the same idea about which one
+    of there two buffers goes to front and which goes to back. Older
+    commit https://github.com/ssvb/xf86-video-fbturbo/commit/30b4ca27d1c4
+    tried to address this problem in a mostly empirical way and managed
+    to solve it at least for the synthetic test gles-rgb-cycle-demo and
+    for most of the real programs (such as Qt5 applications, etc.)
+    
+    However appears that this heuristics is not 100% reliable in all
+    cases. The Extreme Tux Racer game run in glshim manages to trigger
+    the back and front buffers mismatch. Which manifests itself as
+    erratic penguin movement.
+    
+    This patch adds a special check, which now randomly samples certain
+    bytes from the dri2 buffers to see which one of them has been
+    modified by the client application between buffer swaps. If we see
+    that the rendering actually happens to the front buffer instead of
+    the back buffer, then we just change the roles of these buffers.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 9808a58d33192032d63ddc0cc730c2e14272481c
+Author: Daniel Drake <drake@endlessm.com>
+Date:   Mon Nov 11 15:54:38 2013 -0600
+
+    Auto-detect mali DRI device path
+    
+    When using exynos_drm, /dev/dri/card0 is now the exynos-drm node, and
+    /dev/dri/card1 is mali.
+    
+    Instead of hardcoding mali at card0, use libdrm to automatically
+    provide the correct device node path.
+    
+    Signed-off-by: Daniel Drake <drake@endlessm.com>
+
+commit c395869719ab5044f3f1cc832e6d2c8b2a750c0e
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Oct 26 18:14:51 2013 +0300
+
+    Set proper ELF attributes for the ARM assembly functions
+    
+    Fixes linking related fragility, which could result in crashes
+    when doing Thumb2->ARM function calls.
+    
+    Reported-by: Luc Verhaegen <libv@skynet.be>
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit acee1797d5c935b466492e949b2feea2b06e1f7f
+Author: Luc Verhaegen <libv@skynet.be>
+Date:   Sat Oct 19 16:47:47 2013 +0200
+
+    ump: set ump_alternative_fb_secure_id to invalid
+    
+    This avoids a kernel oops due to the badly implemented and badly
+    checked ump interface.
+    
+    Signed-off-by: Luc Verhaegen <libv@skynet.be>
+
+commit 718cf8f0d0425a7e08c2e2fa3bdd299fbb57736a
+Author: Luc Verhaegen <libv@skynet.be>
+Date:   Sat Oct 19 16:46:06 2013 +0200
+
+    configure: check for ump/ump.h
+    
+    And disable building ump when it is not there.
+    
+    Signed-off-by: Luc Verhaegen <libv@skynet.be>
+
+commit fed3148bad26186dd04707cdac67809a666f1742
+Author: Luc Verhaegen <libv@skynet.be>
+Date:   Sat Oct 19 02:35:31 2013 +0200
+
+    fix up dri driverName to select the lima driver
+    
+    The binary driver is unaffected by it, only when mesa-dri is fully
+    installed does it do something.
+    
+    Signed-off-by: Luc Verhaegen <libv@skynet.be>
+
+commit 8ad03c9d5d151a44b4cb52d7b53746ee41ff6c6a
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Oct 17 20:06:30 2013 +0300
+
+    Fix the 'forgotten else' regression to use NEON on Cortex-A8 again
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit e9f978f3d7c8148114f6227974ebb92ec27ebff4
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Oct 17 02:59:36 2013 +0300
+
+    Use ARM LDM instead of VFP for uncached reads on Marvell PJ4
+    
+    Marvell PJ4 core used in CuBox very poorly handles VFP uncached
+    reads from the framebuffer. Using WMMX or ARM LDM reads is much
+    faster, with LDM instructions having a minor advantage. This
+    improves framebuffer read performance from ~50MB/s to ~100MB/s.
+    
+    WMMX runtime detection and PJ4 core identification is also added
+    as part of this fix.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 102957f96edc358b3e0be2e25196746537b71ae0
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Oct 8 17:27:53 2013 +0300
+
+    RPi: implement threshold for deciding between CPU and DMA blits
+    
+    Benchmarking with x11perf, modified to support wider range of sizes
+    for the scroll operation. Tests have been run at the stock 700MHz CPU
+    clock frequency and with 1280x720 32bpp desktop.
+    
+    $ DISPLAY=:0 ./x11perf -scroll5 -scroll10 -scroll15 -scroll20 \
+                           -scroll30 -scroll50 -scroll100
+    
+    == CPU ==
+    
+    1000000 trep @   0.0289 msec ( 34600.0/sec): Scroll 5x5 pixels
+    1000000 trep @   0.0387 msec ( 25800.0/sec): Scroll 10x10 pixels
+    1000000 trep @   0.0459 msec ( 21800.0/sec): Scroll 15x15 pixels
+     450000 trep @   0.0576 msec ( 17300.0/sec): Scroll 20x20 pixels
+     350000 trep @   0.0817 msec ( 12200.0/sec): Scroll 30x30 pixels
+     200000 trep @   0.1564 msec (  6390.0/sec): Scroll 50x50 pixels
+     100000 trep @   0.4446 msec (  2250.0/sec): Scroll 100x100 pixels
+    
+    == fb_copyarea (DMA) acceleration ==
+    
+    1000000 trep @   0.0307 msec ( 32500.0/sec): Scroll 5x5 pixels
+    1000000 trep @   0.0353 msec ( 28300.0/sec): Scroll 10x10 pixels
+    1000000 trep @   0.0397 msec ( 25200.0/sec): Scroll 15x15 pixels
+    1000000 trep @   0.0464 msec ( 21600.0/sec): Scroll 20x20 pixels
+     400000 trep @   0.0645 msec ( 15500.0/sec): Scroll 30x30 pixels
+     250000 trep @   0.1177 msec (  8500.0/sec): Scroll 50x50 pixels
+     100000 trep @   0.2783 msec (  3590.0/sec): Scroll 100x100 pixels
+    
+    This shows that the ioctls overhead and the DMA setup cost is not so
+    significant for the Raspberry Pi. DMA already becomes a bit faster
+    than CPU at 10x10 size of the blit operation.
+    
+    Even though there is no significant difference between CPU and DMA
+    for extremely small sizes of operations (the other overhead is clearly
+    dominating), setting a threshold is not going to harm:
+    
+    == mixed CPU / fb_copyarea (DMA) with 90 pixels threshold ==
+    
+    1000000 trep @   0.0291 msec ( 34300.0/sec): Scroll 5x5 pixels
+    1000000 trep @   0.0345 msec ( 29000.0/sec): Scroll 10x10 pixels
+    1000000 trep @   0.0395 msec ( 25300.0/sec): Scroll 15x15 pixels
+    1000000 trep @   0.0466 msec ( 21400.0/sec): Scroll 20x20 pixels
+     400000 trep @   0.0650 msec ( 15400.0/sec): Scroll 30x30 pixels
+     250000 trep @   0.1181 msec (  8470.0/sec): Scroll 50x50 pixels
+     100000 trep @   0.2784 msec (  3590.0/sec): Scroll 100x100 pixels
+    
+    If some other ARM devices also implement Raspberry Pi compatible
+    accelerated fb_copyarea ioctl, then the threshold selection may
+    be reconsidered.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit a446b3bb6c4a0dc21450c7b5ce163ef48a05ec21
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Oct 7 20:47:28 2013 +0300
+
+    Allow to disable Raspberry Pi fb_copyarea acceleration via xorg.conf
+    
+    Now acceleration is only used in the case if the AccelMethod option
+    is not set (so that it is assumed to be a default choice) or when
+    it is explicitly set to "COPYAREA". Any other value (for example
+    "CPU") disables acceleration.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 689c0825655563fdde390eeadda37e94cb99b9e4
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Oct 4 01:24:50 2013 +0300
+
+    Mention Raspberry Pi in the 2D acceleration section of the README
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 0ba231c19f838fef16f1c6bc1b8a1a5464f79992
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jun 17 18:28:13 2013 +0300
+
+    Support DMA-optimized fb_copyarea from the Raspberry Pi kernel
+    
+    This provides basic 2D acceleration support for Raspberry Pi
+    to speed up moving windows and scrolling.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 48427e49b29b5fe39de1e83cedeb4a0f4c0fc8c7
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Sep 22 20:08:53 2013 +0300
+
+    Rename the driver from "xf86-video-sunxifb" to "xf86-video-fbturbo"
+    
+    Because a wide range of embedded ARM devices are actually supported
+    (Allwinner A1X/A20, Raspberry Pi, ODROID-X, Rockchip, ...) and
+    are getting some sort of performance improvement and/or hardware
+    acceleration, the DDX driver needs a vendor neutral name.
+    
+    Resolves https://github.com/ssvb/xf86-video-fbturbo/issues/10
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit cbd5b2b6439308b293c84cce5e7923ef072c8110
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Sep 10 02:25:42 2013 +0300
+
+    mali: /var/log/Xorg.0.log warning about insufficient framebuffer size
+    
+    In the case if the framebuffer reservation size is too small for
+    efficient use of the hardware overlays and zero-copy buffers flipping,
+    log a hint about fixing this problem in /var/log/Xorg.0.log
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit b48269ab7e7cf56ea2de306fa56694e2ffa82a10
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Sep 10 01:33:46 2013 +0300
+
+    mali: added a sanity check for the UMP framebuffer wrappers size
+    
+    Even though we are primarily using the UMP buffer obtained by the
+    GET_UMP_SECURE_ID_SUNXI_FB ioctl, another UMP buffer obtained by
+    the GET_UMP_SECURE_ID_BUF1 ioctl should also span over the whole
+    framebuffer. Otherwise we may have troubles with the window resize
+    bug recovery and buffer flipping.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 4ae7f6cfde3a879d2410d57f2071d8420214842c
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Sep 8 01:19:42 2013 +0300
+
+    A big README update
+    
+    The instructions, links, etc.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 8e6659b8eba45323b280a7e0a0f8cc17a9514efe
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Sep 7 04:10:07 2013 +0300
+
+    sunxi: workaround a negative YUV overlay position bug
+    
+    The Allwinner A10/A13 display controller hardware is expected to
+    support negative coordinates of the top left corners of the layers.
+    But there is some bug either in the kernel driver or in the hardware,
+    which messes up the picture on screen when the Y coordinate is negative
+    for YUV layer. Negative X coordinates are not affected. RGB formats
+    are not affected too (no matter whether the RGB layer is scaled or not).
+    
+    We fix this by just recalculating which part of the buffer in memory
+    corresponds to Y=0 on screen and adjust the input buffer settings.
+    
+    Fixes https://github.com/ssvb/xf86-video-sunxifb/issues/16
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 37d5e05d1cdc58f980c4197783449dcc66486cd3
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Sep 7 03:13:37 2013 +0300
+
+    mali: support sunxi hardware overlay also with r5g6b5 format
+    
+    Now zero copy and tear free buffer swapping is also supported
+    for 16bpp desktop.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 64a0d642f7fad447c421df7313c4b259a60c2371
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Sep 7 02:22:37 2013 +0300
+
+    sunxi: Only enable scaler for the layer when it is really necessary
+    
+    Now the scaler is enabled for the sunxi disp layer only when we want
+    to use it for YUV format with XV. Whenever the layer is configured
+    for RGB format or deactivated, the scaler gets disabled.
+    
+    This should make the driver more friendly to the other potential
+    scaled layer users. The total number of available scalers is only
+    2 for Allwinner A10 and only 1 for Allwinner A13.
+    
+    The potential drawback is that now we may get an error when trying
+    to enable the scaler (if somebody else has used up all the available
+    scalers) instead of always having it reserved and ready for use.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 6eb2defc2d975056a0d43188308232125ba2270d
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Aug 13 03:03:39 2013 +0300
+
+    DRI2: Fix the kernel oops regression when DRI2HWOverlay=false
+    
+    Recent changes broke the configuration when "DRI2HWOverlay" option
+    is set to "false". This patch adds the missing UMP secure ids
+    initialization and resolves the problem.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit ca05b0c0446ff69b6eb29210428e85358b187c60
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Aug 4 23:17:34 2013 +0300
+
+    DRI2: Rename all SunxiMaliDRI2 instances to 'mali' for clarity
+    
+    Do this to keep the variables naming style consistent across the
+    source file (earlier these variables had different names like
+    'self', 'drvpriv', 'private').
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 30b4ca27d1c4e43ee0ac22cee3241f95bd335746
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Aug 4 05:33:06 2013 +0300
+
+    DRI2: Ensure correct ordering of frames after window resize
+    
+    In double buffer mode, explicitly mark the buffers as designated
+    for odd or even frame position when putting them into queue. And
+    when swapping the buffers, use these flags to re-synchronize if
+    it is necessary. This prevents problems after window resize (when
+    gles-rgb-cycle-demo could expose a mismatch between the color
+    name in the window title and the actual window color).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 84ee17d9ba3184f27c9d81afeb8741ad3a3098b2
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Aug 4 03:07:08 2013 +0300
+
+    test: use spacebar as a slow motion hotkey for gles-rgb-cycle-demo
+    
+    Whenever something goes wrong in high fps mode, it may be interesting
+    to slow down the demo to check whether the actual background color
+    matches the expected color (shown in the window title).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 67d2e2292754b7a12d98a6c4ac04e300670eead9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Aug 3 11:08:05 2013 +0300
+
+    DRI2: Debugging code for testing the frames order correctness
+    
+    If DEBUG_WITH_RGB_PATTERN is defined, then we check that the
+    frames colors are changed as "R -> G -> B -> R -> G -> ..."
+    pattern and print debugging messages when this is not the
+    case. Such color change pattern can be generated by the
+    "test/gles-rgb-cycle-demo.c" program.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit e30ea4969f035ca1222cf3d2feb8404524a6d726
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Aug 1 01:51:44 2013 +0300
+
+    DRI2: erase the offscreen framebuffer part on first buffer allocation
+    
+    Do this mostly for security reasons. We don't want any application
+    to see whatever was last rendered by the previous GLES application
+    by just peeking into a freshly allocated DRI2 buffer.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 4a99dcef81878434240bda820b5a73b8221efd61
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Aug 1 01:29:06 2013 +0300
+
+    DRI2: Don't waste overlay on a strange 1x1 window created by gnome-shell
+    
+    We manage only a single hardware overlay. That's a precious shared
+    resource, which we want to use for zero-copy fullscreen compositing
+    in gnome-shell. The strange 1x1 window does not really need it.
+    Fixes https://github.com/ssvb/xf86-video-sunxifb/issues/2
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 789460c174ff70963b74771e8c1ab631c7106611
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jul 31 03:36:52 2013 +0300
+
+    DRI2: Added new "SwapbuffersWait" option for xorg.conf
+    
+    When enabled, it tries to avoid tearing in OpenGL ES applications.
+    Works on sunxi hardware in the case if the hardware overlay (sunxi
+    disp layer) is used for a DRI2 window. The name of this option and
+    the description in the man page has been borrowed from intel and
+    radeon drivers.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit a60b02388abfb4141811b94933489fcc43ecc747
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jul 31 00:25:33 2013 +0300
+
+    DRI2: Implemented double buffering when using the hardware overlay
+    
+    That's the right thing to do and fixes issues such as
+        https://github.com/ssvb/xf86-video-sunxifb/issues/6
+    
+    As a result, now the framebuffer size may need to be larger in
+    order to accomodate two DRI2 buffers in the offscreen part of
+    the framebuffer. The users of sunxi hardware are advised to
+    increase the value of fb0_framebuffer_num variable in fex file
+    to 3 for 32bpp mode and to 5 for 16bpp mode.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 7b07f25b95e3d605695ab8fcf7efdce8092baaf9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jul 29 19:10:02 2013 +0300
+
+    Explicitly include "gcstruct.h" for GCOps
+    
+    Should fix https://github.com/ssvb/xf86-video-sunxifb/issues/14
+    and prevent FTBFS on some systems.
+    
+    Reported-by: Fred Chien <cfsghost@gmail.com>
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit a1e66a91f385f9e6e22db1279b5a97c3210481e8
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jul 29 17:06:20 2013 +0300
+
+    DRI2: Rely less on the information from DRI2BufferRec
+    
+    When moving further to our own DRI2 buffers bookkeeping, we can't
+    really trust the information from DRI2BufferRec anymore. So just add
+    a copy of all the missing bits of information to UMPBufferInfoRec
+    and use it instead.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 92b4c2cb28fb5199e488fe4396a7604068ff064f
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jul 27 16:51:58 2013 +0300
+
+    test: configurable delay between frames in gles-rgb-cycle-demo
+    
+    By allowing to set the delay between frames with milliseconds
+    precision in the command line, we can use it to test vsync.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 0fd7d5de06cf889cd34a4ee7c086d77950f84332
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jul 27 02:17:06 2013 +0300
+
+    DRI2: CPU copy fallback path does not drop half of the frames anymore
+    
+    The recent commit 9e0a87319b90e3e364fde7cffd24662926f5a4fa (its part
+    that suppressed buffers reuse in the Xorg DRI2 framework) introduced
+    a regression. Half of the frames stoppped reaching the screen on
+    the CPU copy fallback path because the Mali blob now ended up
+    rendering them to the "wrong" buffer.
+    
+    It just confirms that we need to completely move from the standard
+    DRI2 framework in the Xorg server to our own buffers bookkeeping
+    logic. This patch fixes the regression by introducing a single UMP
+    buffer per window, which is shared between back and front DRI2
+    buffers. We can do this because double buffering does not make much
+    sense on the fallback path at the moment (we can't set scanout from
+    this buffer and anyway have to copy this data elsewhere immediately
+    after we get it from Mali).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 7994a0f33cc5c31b082df99d09eaa250bc4c11f6
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Jul 26 16:11:25 2013 +0300
+
+    DRI2: only pay attention to back buffers requests
+    
+    Bail out earlier for the uninteresting types of DRI2 buffer
+    requests (by just returning a dummy null UMP buffer). Makes
+    the code a bit more simple on the common path.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 1f89628c5ab3e87d44dc8cfa979ca67e9baee778
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jul 25 01:40:05 2013 +0300
+
+    test: new gles-rgb-cycle-demo for testing the correctness of DRI2
+    
+    The test program cycles through 3 colors (red, green, blue), so
+    it is easier to see if we get the color change pattern wrong.
+    Also the X11 window title is updated to indicate the current
+    color information. If we have any problems with window
+    decorations handling, they are likely to be exposed.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit d59ae8a7bce0e16384b47f9d89a401896a693d6c
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jul 25 01:19:35 2013 +0300
+
+    DRI2: Refine the workaround for Mali r3p0 window resizing issue
+    
+    Using the secure id 1 (framebuffer) to trick the Mali blob into
+    requesting DRI2 buffers again was not a very good idea. The problem
+    is that the blob still writes something there and corrupts the
+    framebuffer. So instead we try to assign secure id 2 to a dummy
+    4KiB UMP buffer allocated in memory and use it for the same purpose.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 9e0a87319b90e3e364fde7cffd24662926f5a4fa
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jul 24 05:25:47 2013 +0300
+
+    DRI2: Workaround window resize bug in Mali r3p0 blob
+    
+    The Mali blob is doing something like this:
+    
+     1. Request BackLeft DRI2 buffer (buffer A) and render to it
+     2. Swap buffers
+     3. Request BackLeft DRI2 buffer (buffer B)
+     4. Check window size, and if it has changed - go back to step 1.
+     5. Render to the current back buffer (either buffer A or B)
+     6. Swap buffers
+     7. Go back to step 4
+    
+    A very serious show stopper problem is that the Mali blob ignores
+    DRI2-InvalidateBuffers events and just uses GetGeometry polling
+    to check whether the window size has changed. Unfortunately this
+    is racy and we may end up with a size mismatch between buffer A
+    and buffer B. This is particularly easy to trigger when the window
+    size changes exactly between steps 1 and 3.
+    
+    See test/gles-yellow-blue-flip.c program which demonstrates this.
+    Qt5 applications also trigger this bug.
+    
+    We workaround the issue by explicitly tracking the requests for
+    BackLeft buffers and checking whether the sizes of these buffers
+    match at step 1 and step 3. However the real challenge here is
+    notifying the client application that these buffers are no good,
+    so that it can request them again. As DRI2-InvalidateBuffers
+    events are ignored, we are in a pretty difficult situation.
+    Fortunately I remembered a weird behaviour observed earlier:
+    
+        https://groups.google.com/forum/#!msg/linux-sunxi/qnxpVaqp1Ys/aVTq09DVih0J
+    
+    Actually if we return UMP secure ID value 1 for the second DRI2
+    buffer request, the blob responds to this by spitting out the
+    following error message:
+    
+        [EGL-X11] [2274] DETECTED ONLY ONE FRAMEBUFFER - FORCING A RESIZE
+        [EGL-X11] [2274] DRI2 UMP ID 0x3 retrieved
+        [EGL-X11] [2274] DRI2 WINDOW UMP SECURE ID CHANGED (0x3 -> 0x3)
+    
+    And then it proceeds by re-trying to request a pair of DRI2 buffers.
+    But that's exactly the behaviour we want! As a down side, some ugly
+    flashing can be seen on screen at the time when this workaround kicks
+    in, but then everything normalizes. And unfortunately, the race
+    condition is still not totally eliminated because the blob is
+    apparently getting DRI2 buffer sizes from the separate GetGeometry
+    requests instead of using the information provided by DRI2GetBuffers.
+    But now the problem is at least very hard to trigger.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 0a3dbfba444d6eb3ab6911a683b1ea12bdf7fa14
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Sat Jul 20 09:30:19 2013 +0200
+
+    Fix XV border artifacts when using gstreamer 1.0
+    
+    Since version 1.0, gstreamer (when using xvimagesink) often
+    allocates a larger XV image for the video with padding on all
+    four sides and then calls XvPutImage() to render a part of this
+    image. With the current XV implementation this results in
+    artifacts on the borders of the image, with a green bar at the
+    bottom.
+    
+    I am observing this when playing a 1280x720 video on a 1920x1080
+    screen at 32bpp, the size of the video window doesn't matter.
+    
+    This problem seems to be an exaggeration of the one described in
+    https://bugzilla.gnome.org/show_bug.cgi?id=685305.
+    
+    The solution appears to be to use the source area dimensions as
+    requested in the XvPutImage() call, as opposed to the dimensions
+    of the originally allocated image, and to honour the offsets
+    (src_x, src_y) when setting the source region on the display
+    controller. With this relatively simple change, the problem seems
+    to go away, and gstreamer 1.0 (which is faster than gstreamer 0.10
+    due to a zero-copy strategy) provides an acceptable solution for
+    video playback.
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit febafa2b94624c02cd048999d7c43351f903dc2c
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Jul 19 03:45:42 2013 +0300
+
+    Don't initialize XV if we can't reserve a scalable sunxi-disp layer
+    
+    In the case if an attempt to reserve a scalable sunxi-disp layer
+    failed, don't initialize XV at all. Otherwise any attempt to use
+    XV overlay is not going to work correctly and just results in
+    the following dmesg spam:
+    
+    [  728.280000] [DISP] not supported yuv channel format:18 in img_sw_para_to_reg
+    
+    This may happen on Allwinner A13 if scaler mode is enabled in
+    .fex file (A13 only has one DEFE scaler). Allwinner A10 also
+    can have similar troubles in dual-head configuration if scaler
+    mode is enabled for one or both screens (A10 has two DEFE scalers).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 15a306091d7e1c0b9c278c6f35f88373cfdbd30c
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Fri Jul 19 00:35:14 2013 +0200
+
+    Update man page and README to reflect diverse platform support
+    
+    Update the man page and bring it up-to-date, reflecting the fact
+    that the driver also supports non-sunxi platforms. Add description
+    of the "XVHWOverlay" option.
+    
+    Also a small update to the README for similar reasons.
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit d39ccbfec2e013395ab2393b777577fd729cca59
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Thu Jul 18 21:00:21 2013 +0200
+
+    Add option to disable XV hardware overlay
+    
+    Add the "XVHWOverlay" boolean xorg.conf option to make it possible
+    to disable the XV acceleration feature using display layers on
+    sunxi hardware.
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit 85772fe37e59d76db2429c31130f730600cfcc39
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jul 17 17:34:21 2013 +0300
+
+    configure.ac: workaround libump/pthreads build issue
+    
+    In some systems libump library is built without an explicit pthreads
+    dependency. As the issue has been already confirmed to affect both
+    sunxi and odroid users (and maybe the users of the other mali400
+    based hardware), it is easier to just workaround the problem locally.
+    Otherwise we would need to hunt down all the libump packagers and
+    beg for the fix.
+    
+    More details are at https://github.com/ssvb/xf86-video-sunxifb/issues/11
+    
+    Reported-by: Patrick Wood
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit de4c24e0e05936109e9f4f56ebfec2c97aa19cf9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jul 17 14:02:45 2013 +0300
+
+    Define ARRAY_SIZE macro if it is not provided by Xorg headers
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit f99da9c58daf03312fe97b502f85f7d89be1df1b
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Jul 16 05:51:31 2013 +0300
+
+    Added initial XV extension support for sunxi hardware
+    
+    Proper layer sharing between XV and DRI2 still needs to be implemented.
+    Additionally we still need NEON and/or G2D "textured overlay" as a
+    fallback solution for the composited desktop (NEON optimized XV is going
+    to be useful for a wide range of ARM devices). A bit of performance
+    tuning is also necessary.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit dc478c9db65c573545fe14280b9b9a455e1abf01
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Jul 12 00:56:19 2013 +0300
+
+    sunxi: disp ioctl wrappers for YUV overlay and color key support
+    
+    They are needed for a basic XV extension implementation.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 06f5aec6c35676b072b538330a6c3a6f9deabbe4
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Fri Jun 7 02:06:00 2013 +0200
+
+    Add CPU optimization for PutImage
+    
+    Benchmark tests reveal that xorg's fb layer PutImage implementation
+    does not follow on optimal code path for requests without special
+    raster operations, which is due to the use of a slower general blit
+    function instead of the pixman library. This affects Xlib PutImage
+    requests and some ShmPutImage requests. In the case of ShmPutImage,
+    xorg directs ShmPutImage requests to PutImage only if the width of
+    the part of the image to be copied is equal to the full width of
+    the image, resulting in relatively poor performance. If the width
+    of the part of the image that is copied is smaller than the full
+    image, then xorg uses CopyArea which results in the use of the
+    already optimal pixman blit functions. The sub-optimal path is
+    commonly triggered by applications such as window managers and web
+    browsers.
+    
+    To fix this unnecessary performance flaw, PutImage is replaced with
+    a version that uses pixman for the common case of GXcopy and all
+    plane masks sets. This change is device-independent and only uses
+    pixman CPU blit functions that is already present in the xorg server.
+    
+    Using the low-level benchmark program benchx
+    (https://github.com/hglm/benchx.git), the following speed-ups were
+    measured (1920x1080x32bpp) on an Allwinner A10 device:
+    
+    ShmPutImageFullWidth (5 x 5): Speed up 9%
+    ShmPutImageFullWidth (7 x 7): Slow down 5%
+    ShmPutImageFullWidth (22 x 22): Speed up 8%
+    ShmPutImageFullWidth (49 x 49): Speed up 19%
+    ShmPutImageFullWidth (73 x 73): Speed up 55%
+    ShmPutImageFullWidth (109 x 109): Speed up 50%
+    ShmPutImageFullWidth (163 x 163): Speed up 37%
+    ShmPutImageFullWidth (244 x 244): Speed up 111%
+    ShmPutImageFullWidth (366 x 366): Speed up 77%
+    ShmPutImageFullWidth (549 x 549): Speed up 92%
+    AlignedShmPutImageFullWidth (5 x 5): Slow down 14%
+    AlignedShmPutImageFullWidth (7 x 7): Slow down 6%
+    AlignedShmPutImageFullWidth (15 x 15): Speed up 10%
+    AlignedShmPutImageFullWidth (22 x 22): Speed up 9%
+    AlignedShmPutImageFullWidth (33 x 33): Speed up 21%
+    AlignedShmPutImageFullWidth (49 x 49): Speed up 28%
+    AlignedShmPutImageFullWidth (73 x 73): Speed up 30%
+    AlignedShmPutImageFullWidth (109 x 109): Speed up 47%
+    AlignedShmPutImageFullWidth (163 x 163): Speed up 38%
+    AlignedShmPutImageFullWidth (244 x 244): Speed up 63%
+    AlignedShmPutImageFullWidth (366 x 366): Speed up 84%
+    AlignedShmPutImageFullWidth (549 x 549): Speed up 89%
+    
+    At 16bpp the speed-up is even greater:
+    
+    ShmPutImageFullWidth (5 x 5): Slow down 8%
+    ShmPutImageFullWidth (7 x 7): Slow down 8%
+    ShmPutImageFullWidth (10 x 10): Slow down 6%
+    ShmPutImageFullWidth (22 x 22): Speed up 9%
+    ShmPutImageFullWidth (33 x 33): Speed up 20%
+    ShmPutImageFullWidth (49 x 49): Speed up 27%
+    ShmPutImageFullWidth (73 x 73): Speed up 69%
+    ShmPutImageFullWidth (109 x 109): Speed up 74%
+    ShmPutImageFullWidth (163 x 163): Speed up 100%
+    ShmPutImageFullWidth (244 x 244): Speed up 111%
+    ShmPutImageFullWidth (366 x 366): Speed up 133%
+    ShmPutImageFullWidth (549 x 549): Speed up 123%
+    AlignedShmPutImageFullWidth (5 x 5): Speed up 6%
+    AlignedShmPutImageFullWidth (7 x 7): Slow down 9%
+    AlignedShmPutImageFullWidth (10 x 10): Slow down 10%
+    AlignedShmPutImageFullWidth (33 x 33): Speed up 17%
+    AlignedShmPutImageFullWidth (49 x 49): Speed up 34%
+    AlignedShmPutImageFullWidth (73 x 73): Speed up 49%
+    AlignedShmPutImageFullWidth (109 x 109): Speed up 53%
+    AlignedShmPutImageFullWidth (163 x 163): Speed up 69%
+    AlignedShmPutImageFullWidth (244 x 244): Speed up 82%
+    AlignedShmPutImageFullWidth (366 x 366): Speed up 116%
+    AlignedShmPutImageFullWidth (549 x 549): Speed up 110%
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit 3ad74420e856962d9282cb664b715e0740619c2e
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jun 12 21:35:43 2013 +0300
+
+    CPU: use VFP overlapped blit on VFP-capable hardware by default
+    
+    This should be useful for Raspberry Pi. When reading uncached source buffers,
+    the VFP optimized overlapped two-pass blit is roughly 2-3 times slower than
+    memcpy in cached memory. Which makes it reasonably competitive compared to
+    ShadowFB (considering that ShadowFB allocates an extra buffer, does extra
+    memory copies which take time and thrash L2 cache, etc.). It even provides
+    a slight performance advantage in a more or less realistic use case
+    (scrolling in xterm), which needs reads from the framebuffer:
+    
+    ==== Before (xf86-video-fbdev with ShadowFB) ====
+    
+    $ time DISPLAY=:0 xterm +j -maximized -e cat longtext.txt
+    
+    real    1m50.245s
+    user    0m1.750s
+    sys     0m0.800s
+    
+    ==== After (xf86-video-sunxifb without ShadowFB) ====
+    
+    $ time DISPLAY=:0 xterm +j -maximized -e cat longtext.txt
+    
+    real    1m27.709s
+    user    0m1.690s
+    sys     0m0.920s
+    
+    We get decent results even when reading from the framebuffer. However
+    in many typical workloads (excluding scrolling and dragging windows)
+    the framebuffer is primarily used as write-only. In write-only use
+    cases ShadowFB is just pure overhead. So getting rid of it is a
+    very good idea as this improves overall graphics performance.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 3676a495ce4fe5f5044604f35f2d8172a9394512
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jun 12 23:04:47 2013 +0300
+
+    Fix segfault on exit (introduced by the new backing store code)
+    
+    A small typo in a function argument and C compiler happily accepting
+    void pointers instead of something else is a dangerous combo. Need to
+    be more careful.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit f5501ff1b25ff6aa34dbd9103bb018225aa2900f
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jun 12 19:52:41 2013 +0300
+
+    Backing store heuristics for improving windows dragging performance
+    
+    This patch implements a heuristics, which enables backing store for some
+    windows. When backing store is enabled for a window, the window gets a
+    backing pixmap (via automatic redirection provided by composite extension).
+    It acts a bit similar to ShadowFB, but for individual windows.
+    
+    The advantage of backing store is that we can avoid "expose event -> redraw"
+    animated trail in the exposed area when dragging another window on top of it.
+    Dragging windows becomes much smoother and faster.
+    
+    But the disadvantage of backing store is the same as for ShadowFB. That's a
+    loss of precious RAM, extra buffer copy when somebody tries to update window
+    content, potentially skip of some frames on fast animation (they just do
+    not reach screen). Also hardware accelerated scrolling does not currently
+    work for the windows with backing store enabled.
+    
+    We try to make the best use of backing store by enabling backing store for
+    all the windows that are direct children of root, except the one which has
+    keyboard focus (either directly or via one of its children). In practice this
+    heuristics seems to provide nearly perfect results:
+     1) dragging windows is fast and smooth.
+     2) the top level window with the keyboard focus (typically the application
+        that a user is working with) is G2D accelerated and does not suffer from
+        any intermediate buffer copy overhead.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 1bbeff2f973ad801a3fc5f9f2922782a9f092475
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jun 10 22:24:25 2013 +0300
+
+    DRI2: Move DebugMsg macro to a common header
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 3ea99e510a54d5e0b7d597d2cd22cd2c99fc7367
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jun 8 01:56:05 2013 +0300
+
+    Enable G2D acceleration by default on sun4i hardware
+    
+    With the fallback to CPU backend for unsupported blits and also
+    threshold for avoiding small blits, now G2D should always provide
+    best overall performance.
+    
+    The users of recent versions of xf86-video-sunxifb are supposed
+    to also have a reasonably recent version of linux-sunxi kernel.
+    Which includes the following fix:
+      https://github.com/linux-sunxi/linux-sunxi/commit/3d49345343a1535b
+    
+    The users of old kernels are going to see screen corruption on
+    dragging windows and scrolling. They just should upgrade :)
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit cc8e2c79b5afff4e773cf312a05493ccbe2d1ecf
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jun 8 01:02:55 2013 +0300
+
+    G2D: Fallback to NEON optimized CPU backend for unsupported blits
+    
+    The G2D driver only supports framebuffer->framebuffer blits and
+    also can't be used to accelerate dragging windows to the right
+    (without hacking the kernel driver to do two-pass blit there).
+    This patch adds fallback to NEON optimized CPU backend instead
+    of resorting to use poorly performing fbBlt in these cases.
+    
+    Note: we assume that ioctls normally do not fail (even if they
+          do, the slow old style fallback to fbBlt is not the worst
+          thing to worry about).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit b93dab5cae83cc2c2221483085b680e512bf5c58
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Jun 5 03:07:41 2013 +0300
+
+    CPU: Added ARM VFP two-pass overlapped blit implementation
+    
+    Using VFP, we can load up to 128 bytes with a single VLDM instruction.
+    But before this patch, only NEON implementation was available. Just
+    because it showed better results on Allwinner A10 compared to VFP.
+    And this DDX driver used to primarily target just sunxi hardware.
+    
+    But looks like it makes sense to also target other devices (at least
+    ODROID-X, which has the same Mali400 GPU and can use the same DRI2
+    integration for EGL and GLESv2 support). And on the other ARM devices,
+    VFP aligned reads generally work better than NEON. The benchmark
+    results are listed below:
+    
+                1280x720, 32bpp, testing "x11perf -scroll500"
+    
+    == Exynos 5250, Cortex-A15, Non-cacheable streaming enhancement disabled ==
+    
+    NEON : 10000 trep @   3.7101 msec (   270.0/sec): Scroll 500x500 pixels
+    VFP  : 10000 trep @   2.6678 msec (   375.0/sec): Scroll 500x500 pixels
+    
+    == Exynos 5250, Cortex-A15, Non-cacheable streaming enhancement enabled ==
+    
+    NEON : 15000 trep @   2.2568 msec (   443.0/sec): Scroll 500x500 pixels
+    VFP  : 15000 trep @   2.3016 msec (   434.0/sec): Scroll 500x500 pixels
+    
+    == Exynos 4412, Cortex-A9 ==
+    
+    NEON : 10000 trep @   4.5125 msec (   222.0/sec): Scroll 500x500 pixels
+    VFP  : 10000 trep @   2.7015 msec (   370.0/sec): Scroll 500x500 pixels
+    
+    == TI DM3730, Cortex-A8 ==
+    
+    NEON : 15000 trep @   2.2303 msec (   448.0/sec): Scroll 500x500 pixels
+    VFP  : 10000 trep @   3.0670 msec (   326.0/sec): Scroll 500x500 pixels
+    
+    == Allwinner A10, Cortex-A8 ==
+    
+    NEON : 10000 trep @   2.5559 msec (   391.0/sec): Scroll 500x500 pixels
+    VFP  : 10000 trep @   3.0580 msec (   327.0/sec): Scroll 500x500 pixels
+    
+    == Raspberry Pi, BCM2708, ARM1176 ==
+    
+    VFP  :  3000 trep @   8.7699 msec (   114.0/sec): Scroll 500x500 pixels
+    
+    The benchmark numbers in this particular test setup roughly represent
+    memory copy bandwidth measured in MB/s (when doing overlapped blits
+    inside of a writecombine mapped framebuffer).
+    
+    -----------------------------------------------------------------------
+    
+    Note: the use of VFP two-pass overlapped copy instead of ShadowFB is
+          still not enabled by default when running on Raspberry Pi
+          because the performance results are not so great.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit ae976fe9c2ce4ccf33dc0cfd4f4589b3e5a4e9e9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jun 3 03:17:11 2013 +0300
+
+    CPU: add ARM memcpy assembly function
+    
+    This is my old ARM9E/ARM11 memcpy code from
+        https://garage.maemo.org/projects/mplayer/
+    with some tuning for Raspberry Pi (aligned prefetch added).
+    
+    Will be used by VFP optimized overlapped blt function.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 98f1b1195e6704fbfd7c3c7f18f748b0423a7a79
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Fri May 24 20:56:06 2013 +0200
+
+    G2D: Implement "double speed" 16bpp blits
+    
+    When source and destination coordinates allow it, a 16bpp screen-to-
+    screen blit is divided into up to three segments: two optional one
+    pixel wide edges and an  aligned middle segment that is copied in
+    32-bit mode.
+    
+    This patch adds the low-level function sunxi_g2d_blit_r5g6b5_in_three
+    and adds logic to the general blit function to use it for 16bpp to
+    16bpp blits if the source and destination coordinates allow it. This
+    patch automatically enables the use of this optimization in the
+    sunxi G2D X driver. The area threshold for using G2D for
+    16bpp-to-16bpp blits was introduced in a previous patch.
+    
+    Benchmarks:
+    
+    1920x1080x16bpp@60Hz, ShadowFB disabled:
+    
+    x11perf -scroll100
+    Before:
+     350000 trep @   0.0881 msec ( 11400.0/sec): Scroll 100x100 pixels
+    After:
+     350000 trep @   0.0819 msec ( 12200.0/sec): Scroll 100x100 pixels
+    
+    x11perf -scroll500
+    Before:
+      20000 trep @   1.3547 msec (   738.0/sec): Scroll 500x500 pixels
+    After:
+      35000 trep @   0.8005 msec (  1250.0/sec): Scroll 500x500 pixels
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit b3c2fd2c824667ee81cf9c5d179e6ca7e2278c18
+Author: Harm Hanemaaijer <fgenfb@yahoo.com>
+Date:   Fri May 24 18:38:04 2013 +0200
+
+    G2D: Implement an area threshold for using G2D blits.
+    
+    Due to the overhead of G2D for small screen-to-screen blits, CPU blits
+    are faster for small areas. This patch introduces are threshold below
+    which CPU blits are triggered. It is currently set to 1000 for 32bpp
+    and 2500 for 16bpp based on test results.
+    
+    Some benchmarks:
+    
+    1920x1080x16bppx60Hz, ShadowFB disabled:
+    
+    x11perf -scroll10
+    
+    Before:
+    1500000 trep @   0.0239 msec ( 41800.0/sec): Scroll 10x10 pixels
+    After:
+    2500000 trep @   0.0110 msec ( 90900.0/sec): Scroll 10x10 pixels
+    
+    x11perf -copywinwin10
+    
+    Before:
+    1200000 trep @   0.0247 msec ( 40500.0/sec): Copy 10x10 from window to window
+    After:
+    1800000 trep @   0.0146 msec ( 68600.0/sec): Copy 10x10 from window to window
+    
+    Signed-off-by: Harm Hanemaaijer <fgenfb@yahoo.com>
+
+commit d147e25fc507b798b89fdd177206737e1b72ae60
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Apr 22 23:19:54 2013 +0300
+
+    test: race condition on DRI2 buffers allocation when going fullscreen
+    
+    This test program exposes a problem related to window resizing
+    (or going fullscreen), which is may happen exactly between "back"
+    and "front" DRI2 buffers allocation.
+    
+    The xtrace log with some annotations:
+    
+    000:<:004c:  8: DRI2-Request(151,3): CreateDrawable drawable=0x02200001
+    000:<:004d: 16: DRI2-Request(151,5): GetBuffers drawable=0x02200001 attachments={attachment=BackLeft(0x00000001)};
+    000:>:004d:52: Reply to GetBuffers: width=480 height=480 buffers={attachment=BackLeft(0x00000001)
+                                        name=0x00000157 pitch=1920 cpp=4 flags=0x00000000};
+    
+    Get the BackLeft buffer.
+    
+    000:<:004e:  4: Request(43): GetInputFocus
+    000:>:004e:32: Reply to GetInputFocus: revert-to=PointerRoot(0x01) focus=0x02200001
+    000:<:004f: 24: Request(16): InternAtom only-if-exists=false(0x00) name='_NET_WM_STATE'
+    000:>:004f:32: Reply to InternAtom: atom=0xff("_NET_WM_STATE")
+    000:<:0050: 32: Request(16): InternAtom only-if-exists=false(0x00) name='_NET_WM_STATE_FULLSCREEN'
+    000:>:0050:32: Reply to InternAtom: atom=0x102("_NET_WM_STATE_FULLSCREEN")
+    000:<:0051: 44: Request(25): SendEvent propagate=false(0x00) destination=0x00000170 event-mask=SubstructureNotify,SubstructureRedirect
+                                 ClientMessage(33) format=0x20 window=0x02200001 type=0xff("_NET_WM_STATE")
+                                 data=0x01,0x00,0x00,0x00,0x02,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00;
+    000:<:0052:  4: Request(43): GetInputFocus
+    000:>:0052: Event DRI2-InvalidateBuffers(102) drawable=0x02200001
+    
+    Here the X server attempts to notify the client side DRI2 code in the Mali blob
+    that the DRI2 buffer must be requested again. But this event gets happily ignored.
+    
+    000:>:0052: Event Expose(12) window=0x02200001 x=0 y=0 width=1920 height=1080 count=0x0000
+    000:>:0052:32: Reply to GetInputFocus: revert-to=PointerRoot(0x01) focus=0x02200001
+    000:<:0053:  8: Request(3): GetWindowAttributes window=0x02200001
+    000:<:0054:  8: Request(14): GetGeometry drawable=0x02200001
+    000:>:0053:44: Reply to GetWindowAttributes: backing-store=NotUseful(0x00) visual=0x00000021 class=InputOutput(0x0001)
+                                                 bit-gravity=Forget(0x00) win-gravity=NorthWest(0x01) backing-planes=0xffffffff
+                                                 backing-pixel=0x00000000 save-under=false(0x00) map-is-installed=true(0x01)
+                                                 map-state=Viewable(0x02) override-redirect=false(0x00) colormap=0x00000020
+                                                 all-event-masks=PointerMotion,Exposure,StructureNotify,FocusChange,PropertyChange
+                                                 your-event-mask=PointerMotion,Exposure do-not-propagate-mask=0 unused=0x0000
+    000:>:0054:32: Reply to GetGeometry: depth=0x18 root=0x00000170 x=0 y=0 width=1920 height=1080 border-width=0
+    001:<:000c: 12: Request(98): QueryExtension name='DRI2'
+    001:>:000c:32: Reply to QueryExtension: present=true(0x01) major-opcode=151 first-event=101 first-error=0
+    001:<:000d: 32: DRI2-Request(151,8): SwapBuffers drawable=0x02200001 target_msc_hi=0 target_msc_lo=0
+                                         divisor_hi=0 divisor_lo=0 remainder_hi=0 remainder_lo=0
+    001:>:000d: Event DRI2-BufferSwapComplete(101) drawable=0x00000002 ust_hi=35651585 ust_lo=0 msc_hi=0 msc_lo=0 sbc_hi=0 sbc_lo=1
+    
+    Here the DRI2 code from the Mali blob tries to swap buffers (with the
+    hope that the allocated BackLeft would go to front)
+    
+    001:>:000d:32: Reply to SwapBuffers: swap_hi=0 swap_lo=4096
+    000:<:0055:  8: DRI2-Request(151,3): CreateDrawable drawable=0x02200001
+    000:<:0056: 16: DRI2-Request(151,5): GetBuffers drawable=0x02200001 attachments={attachment=BackLeft(0x00000001)};
+    000:>:0056:52: Reply to GetBuffers: width=1920 height=1080 buffers={attachment=BackLeft(0x00000001)
+                                        name=0x00000159 pitch=7680 cpp=4 flags=0x00000000};
+    
+    And requests for the new BackLeft DRI2 buffer.
+    
+    000:<:0057:  4: Request(43): GetInputFocus
+    000:>:0057:32: Reply to GetInputFocus: revert-to=PointerRoot(0x01) focus=0x02200001
+    000:<:0058:  8: Request(3): GetWindowAttributes window=0x02200001
+    000:<:0059:  8: Request(14): GetGeometry drawable=0x02200001
+    000:>:0058:44: Reply to GetWindowAttributes: backing-store=NotUseful(0x00) visual=0x00000021 class=InputOutput(0x0001)
+                                                 bit-gravity=Forget(0x00) win-gravity=NorthWest(0x01) backing-planes=0xffffffff
+                                                 backing-pixel=0x00000000 save-under=false(0x00) map-is-installed=true(0x01)
+                                                 map-state=Viewable(0x02) override-redirect=false(0x00) colormap=0x00000020
+                                                 all-event-masks=PointerMotion,Exposure,StructureNotify,FocusChange,PropertyChange
+                                                 your-event-mask=PointerMotion,Exposure do-not-propagate-mask=0 unused=0x0000
+    000:>:0059:32: Reply to GetGeometry: depth=0x18 root=0x00000170 x=0 y=0 width=1920 height=1080 border-width=0
+    000:<:005a:  8: Request(3): GetWindowAttributes window=0x02200001
+    000:<:005b:  8: Request(14): GetGeometry drawable=0x02200001
+    000:>:005a:44: Reply to GetWindowAttributes: backing-store=NotUseful(0x00) visual=0x00000021 class=InputOutput(0x0001)
+                                                 bit-gravity=Forget(0x00) win-gravity=NorthWest(0x01) backing-planes=0xffffffff
+                                                 backing-pixel=0x00000000 save-under=false(0x00) map-is-installed=true(0x01)
+                                                 map-state=Viewable(0x02) override-redirect=false(0x00) colormap=0x00000020
+                                                 all-event-masks=PointerMotion,Exposure,StructureNotify,FocusChange,PropertyChange
+                                                 your-event-mask=PointerMotion,Exposure do-not-propagate-mask=0 unused=0x0000
+    000:>:005b:32: Reply to GetGeometry: depth=0x18 root=0x00000170 x=0 y=0 width=1920 height=1080 border-width=0
+    001:<:000e: 32: DRI2-Request(151,8): SwapBuffers drawable=0x02200001 target_msc_hi=0 target_msc_lo=0
+                                         divisor_hi=0 divisor_lo=0 remainder_hi=0 remainder_lo=0
+    001:>:000e: Event DRI2-BufferSwapComplete(101) drawable=0x00000002 ust_hi=35651585 ust_lo=0 msc_hi=0 msc_lo=0 sbc_hi=0 sbc_lo=2
+    
+    And here it is simply swapping the buffers.
+    
+    001:>:000e:32: Reply to SwapBuffers: swap_hi=0 swap_lo=4096
+    000:<:005c:  8: Request(3): GetWindowAttributes window=0x02200001
+    000:<:005d:  8: Request(14): GetGeometry drawable=0x02200001
+    000:>:005c:44: Reply to GetWindowAttributes: backing-store=NotUseful(0x00) visual=0x00000021 class=InputOutput(0x0001)
+                                                 bit-gravity=Forget(0x00) win-gravity=NorthWest(0x01) backing-planes=0xffffffff
+                                                 backing-pixel=0x00000000 save-under=false(0x00) map-is-installed=true(0x01)
+                                                 map-state=Viewable(0x02) override-redirect=false(0x00) colormap=0x00000020
+                                                 all-event-masks=PointerMotion,Exposure,StructureNotify,FocusChange,PropertyChange
+                                                 your-event-mask=PointerMotion,Exposure do-not-propagate-mask=0 unused=0x0000
+    000:>:005d:32: Reply to GetGeometry: depth=0x18 root=0x00000170 x=0 y=0 width=1920 height=1080 border-width=0
+    
+    And now it is polling for the change of window geometry. The same
+    "SwapBuffers -> GetGeometry -> SwapBuffers" pattern keeps repeating.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 24d05b1d84a2329822d5803075148c0e35a0c851
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Mar 30 05:49:38 2013 +0200
+
+    CPU: Added ARM NEON optimized CopyWindow/CopyArea implementation
+    
+    Should be useful for better performance when moving windows
+    and scrolling on the devices without a dedicated 2D hardware
+    accelerator (Allwinner A13).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 000398d120f9bd623d095504a613f3c35e6f40ea
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Mar 27 21:10:38 2013 +0200
+
+    sunxi: Fix segfault when there is no "fbdev" option in xorg.conf
+    
+    Just use "/dev/fb0" by default.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 1cd5f084544defa20996f63b49e2802ae4238144
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Mar 26 22:03:26 2013 +0200
+
+    G2D: Now sunxi_x_g2d.c code does not require sunxi disp anymore
+    
+    The sunxi_x_g2d.c file contains the midlayer code for hooking the
+    G2D optimized blit into xserver. But in fact it does not strictly
+    need to depend on anything sunxi specific.
+    
+    So now we introduce a simple "blt2d_i" interface struct which
+    specifically provides a pointer to the accelerated blit function.
+    And just use this interface struct instead of the whole "sunxi_disp_t".
+    This allows to easily reuse the same code for other non-G2D or even
+    non-sunxi blit implementations in the future.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 66f3e5cc732454108f139db0ac0e52a1f465c7d5
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Mar 26 20:35:14 2013 +0200
+
+    CPU: Remove unneeded test program bundled with runtime CPU detection
+    
+    The 'main' function got there by accident and was not spotted
+    earlier because the driver itself is a shared library.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit e6b1e48bae68c60017485d9b80f2fb10b7b1587b
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Mar 26 16:30:14 2013 +0200
+
+    CPU: Added code for runtime CPU features detection
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 60291865e2801acaf7ec1980a900bd67df91c2b5
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Mar 22 02:33:42 2013 +0200
+
+    G2D: enable accelerated blits for 16bpp color depth
+    
+    This is still not perfect, because G2D can't saturate memory bandwidth
+    for this color depth (it is fillrate limited). We should emulate 16bpp blits
+    with 32bpp blits whenever it is possible.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 5f964213123bf5517e7ece09baf4bdaaba60d973
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Mar 22 02:27:24 2013 +0200
+
+    G2D: attempt loading 'g2d_23' kernel module
+    
+    It might be not statically compiled into kernel (for example in Fedora),
+    so we should try to explictly load it.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit cc1b14101edd9421980709f1b2856d10cfbf4388
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Mar 21 06:14:43 2013 +0200
+
+    G2D: accelerate CopyArea between different pixmaps in framebuffer
+    
+    Now source and destination pixmaps don't need to be the same for
+    using G2D acceleration (as long as both of them are allocated in
+    the framebuffer). This allows using G2D to copy pixels from DRI2
+    buffers to the framebuffer on the fallback path (when the window
+    of an OpenGL ES application is partially overlapped by some other
+    windows). Though it only works when composite extension is
+    disabled, for example by adding the following to xorg.conf:
+    
+        Section "Extensions"
+            Option "Composite" "Disable"
+        EndSection
+    
+    If composite extension is enabled, windows have backing pixmaps, and
+    we have a longer chain of copies:
+    
+       DRI2 buffer -> backing pixmap -> framebuffer
+    
+    Because backing pixmap is not allocated in a physically contiguous
+    memory, it can't be copied using G2D yet.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit d6fb73881068efa9dd723ab9645bab83ffc529f7
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Mar 20 00:16:41 2013 +0200
+
+    Suppress "[DISP] not supported scaler input pixel format:0" dmesg spam
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit ecfeb4aa669bb2859c770a264d733c07f599cd06
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Mar 18 23:34:37 2013 +0200
+
+    G2D: Hardware acceleration for XCopyArea (initially 32bpp only)
+    
+    Wrap CreateGC function to add a hook for CopyArea operation, which
+    can be accelerated using G2D for the buffers inside of the visible
+    part of the framebuffer. In the future we may try to also ensure
+    that DRI2 buffers are copied using G2D instead of CPU in the case
+    if we hit the fallback path and can't avoid this copy.
+    
+    Benchmark using "x11perf -scroll500 -copywinwin500":
+    
+    === ShadowFB (software rendering) ===
+    
+       3000 reps @   2.0308 msec (   492.0/sec): Scroll 500x500 pixels
+       3000 reps @   1.9741 msec (   507.0/sec): Scroll 500x500 pixels
+       3000 reps @   1.9826 msec (   504.0/sec): Scroll 500x500 pixels
+       3000 reps @   1.9830 msec (   504.0/sec): Scroll 500x500 pixels
+       3000 reps @   1.9965 msec (   501.0/sec): Scroll 500x500 pixels
+      15000 trep @   1.9934 msec (   502.0/sec): Scroll 500x500 pixels
+    
+       1600 reps @   3.3054 msec (   303.0/sec): Copy 500x500 from window to window
+       1600 reps @   3.3179 msec (   301.0/sec): Copy 500x500 from window to window
+       1600 reps @   3.2263 msec (   310.0/sec): Copy 500x500 from window to window
+       1600 reps @   3.2491 msec (   308.0/sec): Copy 500x500 from window to window
+       1600 reps @   3.2357 msec (   309.0/sec): Copy 500x500 from window to window
+       8000 trep @   3.2669 msec (   306.0/sec): Copy 500x500 from window to window
+    
+    === G2D (hardware acceleration) ===
+    
+       3000 reps @   2.1949 msec (   456.0/sec): Scroll 500x500 pixels
+       3000 reps @   2.1929 msec (   456.0/sec): Scroll 500x500 pixels
+       3000 reps @   2.1923 msec (   456.0/sec): Scroll 500x500 pixels
+       3000 reps @   2.1889 msec (   457.0/sec): Scroll 500x500 pixels
+       3000 reps @   2.1941 msec (   456.0/sec): Scroll 500x500 pixels
+      15000 trep @   2.1926 msec (   456.0/sec): Scroll 500x500 pixels
+    
+       2800 reps @   1.8114 msec (   552.0/sec): Copy 500x500 from window to window
+       2800 reps @   1.8103 msec (   552.0/sec): Copy 500x500 from window to window
+       2800 reps @   1.8160 msec (   551.0/sec): Copy 500x500 from window to window
+       2800 reps @   1.8099 msec (   553.0/sec): Copy 500x500 from window to window
+       2800 reps @   1.8126 msec (   552.0/sec): Copy 500x500 from window to window
+      14000 trep @   1.8120 msec (   552.0/sec): Copy 500x500 from window to window
+    
+    CPU usage remains low when running this test with G2D acceleration enabled.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 8e6dd0030c48bcbf770dbe564153bbe5bcb92810
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Mar 17 23:31:12 2013 +0200
+
+    DRI2: fix build problem introduced by the previous commit (stray line)
+    
+    Reported-by: Maurice de la Ferté <kadava@gmx.de>
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 97f0c9760aea07e3b80956cc380015cc1a32ec2b
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Mar 17 22:52:29 2013 +0200
+
+    DRI2: more informative messages for /var/log/Xorg.0.log
+    
+    Explain that AIGLX is normally expected to fail and the users should
+    not really worry about it. Also provide a warning in the case if the
+    driver has been compiled without libUMP support (it could be that
+    the user actually wanted 3D acceleration, but just has not installed
+    all the needed dependencies).
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit c0620e1781027bef5a0e7fe7fca59ffbd2e0b9e8
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Mar 17 00:23:04 2013 +0200
+
+    DRI2: Typo fixes (need to return NULL instead of FALSE)
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 7203a3047bbab46c6400b1d21c2410f234124b8d
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Mar 16 00:30:32 2013 +0200
+
+    test: Added missing sunxi_disp_close() to sunxi_g2d_bench
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 696b3d7e045889492fe918755f0d6178e07ca157
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Mar 15 18:21:38 2013 +0200
+
+    test: Added a simple synthetic benchmark for G2D
+    
+    It measures MPix/s numbers for blit and fill operations done
+    by G2D, and also for comparison tests the performance of the
+    same operations done by pixman (software rendering).
+    
+    G2D has clock frequency configured to be half of the RAM clock
+    frequency. So for 480 MHz RAM, we have G2D clocked at 240 MHz,
+    which means that no more than 240 MPix can be processed per
+    second. Unfortunately this limits the performance of a simple
+    operation such as solid fill.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit ea2fc3e478acb396c05ff4acb990d8b67cdc2299
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Mar 14 19:08:07 2013 +0200
+
+    Introduce experimental G2D acceleration
+    
+    This initial G2D support code can speed up moving windows in XFCE. Currently
+    disabled by default, but can be enabled by editing /etc/X11/xorg.conf and
+    adding the following line to the "Device" section:
+    
+            Option          "AccelMethod" "G2D"
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit ba548ffb0eef7eaa1bde266df61b643299c9e346
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Mar 14 02:42:52 2013 +0200
+
+    Reuse the already existing xserver framebuffer mapping for sunxi_disp_t
+    
+    Avoid creating a new mapping because that's a waste of the virtual address
+    space. Also we are going to use this xserver framebuffer mapping address
+    for testing whether window backing pixmaps are allocated in the framebuffer
+    and can be accelerated by G2D.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 5d9c791d2209437cf55b0c0ed5ac0ee01fd81eb4
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Mar 13 06:44:39 2013 +0200
+
+    test: use G2D acceleration in sunxi_disp_vsync_demo
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit df534b222aeae76db1a5fd28c767a2edb78f73b9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Mar 13 06:28:26 2013 +0200
+
+    Added ioctl wrappers for simple G2D fill and blit operations
+    
+    The existing kernel driver from Allwinner for G2D accelerator
+    is quite bad because ioctls are synchronous and blocking the
+    caller thread, compromise security (basically it is a backdoor
+    for copying data in memory between any arbitrary physical
+    addresses) and have high overhead (each individual fill or
+    blit operation needs an ioctl). But we need to start with
+    something, so use this stuff as a placeholder.
+    
+    The g2d_driver.h header file is taken from linux-sunxi-3.4
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit c09455c35403f710cc7edec98961a23d8fdd6c1f
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Mar 13 02:20:38 2013 +0200
+
+    Added 'test' directory and a demo program for testing tear-free animation
+    
+    It is basically the first test program for the sunxi disp ioctls wrapper
+    code from "src/sunxi_disp.c".
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit e939cc3cdd0bfea31543b7ba18c3bbfc8d8f912e
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Mar 12 16:39:22 2013 +0200
+
+    Free sunxi_disp_t struct directly from sunxi_disp_close()
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 19ac8389749c7669fcceaa77b1ec9b211df74f54
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Mar 12 00:05:38 2013 +0200
+
+    DRI2: Try to explicitly load 'mali' and 'mali_drm' kernel modules
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 6f708d4bcd32c32a27f7c3adff4569806af16788
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Mar 7 20:59:37 2013 +0200
+
+    Provide xorg.conf needed by the instructions from http://linux-sunxi.org
+    
+    The installation instructions from http://linux-sunxi.org/Binary_drivers wiki
+    page currently ask the users to run the following command after compiling
+    and installing the ddx driver (either xf86-video-mali or xf86-video-sunxifb):
+    
+        cp xorg.conf /usr/share/X11/xorg.conf.d/99-mali400.conf
+    
+    Regardless of whether it is a good idea to touch /usr/share/X11/xorg.conf.d
+    directory in the first place, providing a sample xorg.conf file may save
+    some users from having unnecessary troubles.
+    
+    Reported-by: Michal Suchanek via https://github.com/ssvb/xf86-video-sunxifb/pull/1
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 950bf7e2b8d56f077435a82251cd07ac8f5e2ff2
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Wed Feb 20 08:45:20 2013 +0000
+
+    More detailed debug messages related to DRI2 support
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 06ae9b68f25abfd1e1a0a1a12c75816581f9ef78
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Feb 18 02:37:24 2013 +0200
+
+    Add support for hardware ARGB cursors up to 32x32 size
+    
+    Actually they are converted to 32x32 with 256 color palette. In the
+    case if we have more than 256 unique colors, the color components
+    of the pixels are reduced from 8-bit to 7-bit, then to 6-bit if
+    necessary and so on (until we reduce the number of unique colors
+    so that they can fit the palette). In the worst case we may
+    theoretically end up with just 2 bits per A, R, G and B channels,
+    but in practice 7 or 6 bits seem to be enough.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 0ab0a9e8ee5cb851a11a8a85e7a84631b4ae20c7
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Feb 18 01:52:29 2013 +0200
+
+    Disable hardware layers when software ARGB cursor is used
+    
+    The modern desktops may use ARGB cursors. As the current
+    sunxi display controller support code can't handle this
+    type of cursor yet, the X server fallbacks to a software
+    cursor which is not visible under layers and ruining user
+    experience.
+    
+    This patch adds empty implementations for "UseHWCursorARGB"
+    and "LoadCursorARGB" functions which just return error for
+    now (so that the X server still fallbacks to software cursor).
+    However we also introduce callback functions responsible for
+    notifying the DRI2 code about enabling/disabling the use of
+    hardware cursor. So that now hardware overlays are disabled
+    when switching to software cursor and re-enabled again when
+    switching back to hardware cursor.
+    
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 8507947e62d15cdf96cc4264c93497a9586b2dbb
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Tue Feb 12 02:03:55 2013 +0200
+
+    Fix the creation of DRI2 buffers for pixmaps
+    
+    Testing with gnome-shell revealed a problem. We need to migrate
+    pixmaps into UMP buffers in order to allow the GLESv2 based
+    compositing manager to actually access the content of redirected
+    windows, rendered by X11 applications into offscreen pixmaps.
+    
+    Just to make sure that we don't add any unneeded overhead for 2D
+    (neither extra CPU cycles nor the increase for unrelated pixmaps
+    memory footprint), a hash table (currently uthash [1]) is used
+    for connecting DRI2-enabled pixmaps with UMP buffers. The lookups
+    are only performed on DRI2 buffer creation and pixmap destruction.
+    
+    1. http://troydhanson.github.com/uthash/
+    
+    Reported-by: Michal Suchanek <hramrach@gmail.com>
+    Signed-off-by: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+
+commit 9de9ae1f52060ab12db01b41df284bf7be59c449
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Fri Feb 1 15:17:48 2013 +0200
+
+    Add some links to installation instructions in README
+
+commit 5288d3e6c04a7251866e9066b099a1b339995c52
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jan 24 23:48:27 2013 +0200
+
+    Fix for FBTFS in linaro/ubuntu
+    
+    In file included from sunxi_mali_ump_dri2.c:39:0:
+    /usr/include/xf86drm.h:40:17: fatal error: drm.h: No such file or directory
+    compilation terminated.
+    make[2]: *** [sunxi_mali_ump_dri2.lo] Error 1
+
+commit b70da6c07668405d35d0c6ea2158fe51417f2556
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jan 24 20:44:32 2013 +0200
+
+    Post-release version bump to 0.3.1
+
+commit f31a6455e66954621833a158e306c4cdaeaf6604
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jan 24 20:42:59 2013 +0200
+
+    Pre-release version bump to 0.2.0
+
+commit 52c04d512612bf16da7337f13abb2a5f170130c6
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jan 24 20:17:18 2013 +0200
+
+    Typo fixes for man page
+
+commit b2eb1a20bfdb9ddc223fe6076e40b8ee1df6884b
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Thu Jan 24 20:00:44 2013 +0200
+
+    DRI2 integration for Mali400 binary blobs support and OpenGL ES acceleration
+    
+    The driver can use sunxi display controller layers for fully visible
+    windows, avoiding expensive memory copy.
+
+commit 64d51c0fe8d137fc21a59251d6334d6201ba0de9
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jan 21 00:42:03 2013 +0200
+
+    Support for sunxi hardware cursor
+    
+    Hardware cursor is necessary because it is also visible on
+    top of sunxi disp layers, while software cursor is not.
+    
+    FIXME: there is one minor problem with negative cursor
+    positions. The hardware does not support them, so such
+    positions are just set to 0 for now. In the future this
+    can be solved better by changing the cursor picture and
+    showing only the parts which are visible on screen.
+
+commit bf7c7a6c62587a52d56be6cf06bb275f46f08fa7
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Mon Jan 21 00:03:42 2013 +0200
+
+    Added supplementary wrapper functions for sunxi display controller ioctls
+    
+    Note: the header file "sunxi_disp_ioctl.h" is GPL licensed. So until
+    it is gets a MIT/X11 replacement, the DDX driver is GPL licensed as
+    a whole. The individual source files still have their own license.
+    Also in order to avoid any possible confusion, the MIT/X11 license
+    header from COPYING has been added to "fbdev.c" and "fbdev_priv.h".
+
+commit b0813ddf4c76546acfd308a4bdb70953abd6e64c
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sun Jan 20 23:49:31 2013 +0200
+
+    Move driver private data into a separate header file
+    
+    It is going to be included by multiple different source files.
+
+commit 703aea2810ae1564d35063b5e7db5bd1d83e1f79
+Author: Siarhei Siamashka <siarhei.siamashka@gmail.com>
+Date:   Sat Jan 19 11:43:33 2013 +0200
+
+    Rename "fbdev" -> "sunxifb" and update man page
+    
+    As there is no way for the hardware specific bits to be accepted
+    in xf86-video-fbdev, we need a new driver with its own name.
+
+commit ac293412a01d87f87eb61f4adb9db7486a75d3fc
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Tue Sep 25 08:54:37 2012 -0400
+
+    Remove mibstore.h
+    
+    Signed-off-by: Adam Jackson <ajax@redhat.com>
+
+commit 2edaad4ab2c75e6863caa529d27cd141f579914a
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Mon Jul 2 12:47:08 2012 +0100
+
+    fbdev: bump to 0.4.3
+    
+    Signed-off-by: Dave Airlie <airlied@redhat.com>
+
+commit 8a65ca2fdcc8657ed3b4a72051c6f85bcecc2c18
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Tue Jun 5 11:29:31 2012 +0100
+
+    fbdev: port to new server API.
+    
+    Signed-off-by: Dave Airlie <airlied@redhat.com>
+
+commit 91e8b295f87fba81369b19969900f0981e8ba9cd
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Tue Jun 5 11:21:08 2012 +0100
+
+    fbdev: convert to new screen conversion APIs.
+    
+    Generated using util/modular/x-driver-screen-scrn-conv.sh
+    
+    Signed-off-by: Dave Airlie <airlied@redhat.com>
+
+commit 6e29cf8c2927f81e1e5890a46bf03182079cc062
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Tue Jun 5 11:20:49 2012 +0100
+
+    fbdev: add compat-api + makefile
+
+commit a87213930e399c0d5a8183f6cc7e98ed6d092638
+Author: Paulo Zanoni <pzanoni@mandriva.com>
+Date:   Thu Nov 4 17:02:01 2010 -0200
+
+    Add MOD_CLASS_VIDEODRV to FBDevVersRec
+    
+    fbdev seems to be the only video driver without MOD_CLASS_VIDEODRV
+    
+    Signed-off-by: Paulo Zanoni <pzanoni@mandriva.com>
+    Reviewed-by: Jesse Adkins <jesserayadkins@gmail.com>
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit be003f2568366ff9fc2ff70d6a69df64a2a25cca
+Author: Cyril Brulebois <kibi@debian.org>
+Date:   Mon Nov 8 14:10:44 2010 +0100
+
+    Perform XV initialization only if the server supports it.
+    
+    Use XV from server's xorg-server.h to determine whether to perform XV
+    initialization.
+    
+    Signed-off-by: Cyril Brulebois <kibi@debian.org>
+    Reviewed-by: Julien Cristau <jcristau@debian.org>
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit 20909cd806af488cf529c74417afbc8a12438f4a
+Author: Cyril Brulebois <kibi@debian.org>
+Date:   Mon Nov 8 13:23:35 2010 +0100
+
+    Avoid unused variables when XSERVER_LIBPCIACCESS is defined.
+    
+    Signed-off-by: Cyril Brulebois <kibi@debian.org>
+    Reviewed-by: Julien Cristau <jcristau@debian.org>
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit 90524a26d3458e3d1cbb4e1ecbc4db71714b8929
+Author: Cyril Brulebois <kibi@debian.org>
+Date:   Mon Nov 8 13:35:29 2010 +0100
+
+    man: Stop mentioning server's -scanpci option.
+    
+    It got removed in server's 9727db88d57089be6483104de435626cdbad883a
+    (long time ago).
+    
+    Signed-off-by: Cyril Brulebois <kibi@debian.org>
+    Reviewed-by: Julien Cristau <jcristau@debian.org>
+    Reviewed-by: Alan Coopersmith <alan.coopersmith@oracle.com>
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit 0d45d8f3ad20073595a675f80dd8a4bfe68babfd
+Author: Cyril Brulebois <kibi@debian.org>
+Date:   Sun Nov 7 15:36:46 2010 +0100
+
+    Convert x{re,c,}alloc and xfree.
+    
+    Signed-off-by: Cyril Brulebois <kibi@debian.org>
+    Reviewed-by: Julien Cristau <jcristau@debian.org>
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit 049cdddd14789e00d7db59c44494f90396796992
+Author: Jesse Adkins <jesserayadkins@gmail.com>
+Date:   Tue Sep 28 13:29:51 2010 -0700
+
+    Purge cvs tags.
+    
+    Signed-off-by: Jesse Adkins <jesserayadkins@gmail.com>
+    Signed-off-by: Alan Coopersmith <alan.coopersmith@oracle.com>
+
+commit d3a2fe1b761533909646cae9c35c07f237a9f5e3
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Jul 21 16:49:04 2010 -0400
+
+    config: add comments for main statements
+
+commit f7e68d16dc80fc63ca7f7661378bd6074b8eefa6
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Jul 21 16:07:00 2010 -0400
+
+    config: replace deprecated use of AC_OUTPUT with AC_CONFIG_FILES
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 0ddf357522eff86288e44d19effe380affbc88a4
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Jul 21 14:37:41 2010 -0400
+
+    config: replace deprecated AC_HELP_STRING with AS_HELP_STRING
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 55e0de6cb19faa7d870971f035b41d687af27f0d
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Jul 21 14:05:22 2010 -0400
+
+    config: replace deprecated AM_CONFIG_HEADER with AC_CONFIG_HEADERS
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit a05560b1d37f47a73e1545ef1ba4221d84db1e3c
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Jul 21 09:27:42 2010 -0400
+
+    config: complete AC_INIT m4 quoting
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 8f7d8a7ba33ca16dea37c26268ceb0a93d407a16
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Jul 20 21:44:57 2010 -0400
+
+    config: remove unrequired AC_SUBST([XORG_CFLAGS])
+    
+    This macro is called by PKG_CHECK_MODULES
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 9b3ef42fdd29b46b1edc207052f1fa9c925a7276
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Jul 20 20:24:42 2010 -0400
+
+    config: remove unrequired AC_HEADER_STDC
+    
+    Autoconf says:
+    "This macro is obsolescent, as current systems have conforming
+    header files. New programs need not use this macro".
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit b768d66b87287ac46c2850f816219d75e6b1d21e
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Jul 20 19:41:30 2010 -0400
+
+    config: remove AC_PROG_CC as it overrides AC_PROG_C_C99
+    
+    XORG_STRICT_OPTION from XORG_DEFAULT_OPTIONS calls
+    AC_PROG_C_C99. This sets gcc with -std=gnu99.
+    If AC_PROG_CC macro is called afterwards, it resets CC to gcc.
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit fa588a1ddcc095166d8e305d6a1c79970d1e70ec
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Jul 20 18:45:19 2010 -0400
+
+    config: update AC_PREREQ statement to 2.60
+    
+    Unrelated to the previous patches, the new value simply reflects
+    the reality that the minimum level for autoconf to configure
+    all x.org modules is 2.60 dated June 2006.
+    
+    ftp://ftp.gnu.org/gnu/autoconf/autoconf-2.60.tar.gz
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 6977b3490a626247bdc979e8afc6e5a8b9e19896
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Jul 20 16:15:29 2010 -0400
+
+    config: upgrade to util-macros 1.8 for additional man page support
+    
+    Use MAN_SUBST now supplied in XORG_MANPAGE_SECTIONS
+    The value of MAN_SUBST is the same for all X.Org packages.
+
+commit 7ec9d466e55e6366bf35639610b14a149f6e7b45
+Author: Julien Cristau <jcristau@debian.org>
+Date:   Sat Apr 3 18:05:21 2010 +0200
+
+    Bump to 0.4.2
+
+commit b3220bf63ee39ce3aecdb3e4151b3f4521bd2107
+Author: Julien Cristau <jcristau@debian.org>
+Date:   Wed Feb 10 02:09:17 2010 +0100
+
+    configure: require xorg-macros 1.4 for XORG_INSTALL
+    
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+
+commit a9df47d6d018fdde8d28ec7c5237967e26413f1b
+Author: Julien Cristau <jcristau@debian.org>
+Date:   Thu Feb 4 22:23:34 2010 +0100
+
+    fbdev: add missing shadowRemove in CloseScreen()
+    
+    Fixes crash in CloseScreen().
+    
+    Signed-off-by: Julien Cristau <jcristau@debian.org>
+    Tested-by: Cyril Brulebois <kibi@debian.org>
+
+commit a5b035414d3234ae278c09b34641bb1c68da86d4
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Fri Jan 15 15:44:54 2010 -0800
+
+    Update Sun license notices to current X.Org standard form
+    
+    Signed-off-by: Alan Coopersmith <alan.coopersmith@sun.com>
+
+commit 5ec41a8b2ebee7f922c633a83ee8bea77aefaf3e
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Tue Dec 15 22:01:02 2009 -0500
+
+    configure.ac: remove unused sdkdir=$(pkg-config...) statement
+    
+    The sdkdir variable isn't use, so remove the statement.
+    
+    Acked-by: Dan Nicholson <dbn.lists@gmail.com>
+    
+    Signed-off-by: Gaetan Nadon <memsize@videotron.ca>
+
+commit 69f82077fda16106e534c1ea4c48f0dbdd5576e7
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Mon Dec 14 13:38:44 2009 -0500
+
+    Remove afb support
+    
+    Signed-off-by: Adam Jackson <ajax@redhat.com>
+
+commit 4e8a6ac78d0a89bfc831d4c82ee47d02312beb84
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Mon Nov 23 09:25:05 2009 -0500
+
+    Makefile.am: add ChangeLog and INSTALL on MAINTAINERCLEANFILES
+    
+    Now that the INSTALL file is generated.
+    Allows running make maintainer-clean.
+
+commit d868015c9cb08276164054419a4083d6c5cf4dbb
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Oct 28 14:41:41 2009 -0400
+
+    INSTALL, NEWS, README or AUTHORS files are missing/incorrect #24206
+    
+    Automake 'foreign' option is specified in configure.ac.
+    Remove from Makefile.am
+
+commit a9e65feebd8631d23d175a2c5b62c940190632d6
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Wed Oct 28 14:09:09 2009 -0400
+
+    INSTALL, NEWS, README or AUTHORS files are missing/incorrect #24206
+    
+    Add missing INSTALL file. Use standard GNU file on building tarball
+    README may have been updated
+    Remove AUTHORS file as it is empty and no content available yet.
+    Remove NEWS file as it is empty and no content available yet.
+
+commit 7b583191fa46919730727a0cffe44e7ac6631591
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Mon Oct 26 12:54:21 2009 -0400
+
+    Several driver modules do not have a ChangeLog target in Makefile.am #23814
+    
+    The git generated ChangeLog replaces the hand written one.
+    Update configure.ac to xorg-macros level 1.3.
+    Use XORG_DEFAULT_OPTIONS which replaces four XORG_* macros
+    Update Makefile.am to add ChangeLog target if missing
+    Remove ChangeLog from EXTRA_DIST or *CLEAN variables
+    This is a pre-req for the INSTALL_CMD
+
+commit 6b5e30a2df432cffa90a71c63dbd6ab0aef6203f
+Author: Gaetan Nadon <memsize@videotron.ca>
+Date:   Thu Oct 22 12:34:16 2009 -0400
+
+    .gitignore: use common defaults with custom section # 24239
+    
+    Using common defaults will reduce errors and maintenance.
+    Only the very small or inexistent custom section need periodic maintenance
+    when the structure of the component changes. Do not edit defaults.
+
+commit e233c12c97233f8842c77cb6324c19fcdb06bfa7
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Thu Jul 30 12:04:27 2009 +1000
+
+    fbdev: bump for release 0.4.1
+
+commit dfe51de9923c5436b039f246cf2fc4bfff9329e8
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Tue Jul 28 15:22:40 2009 +1000
+
+    fbdev: change to using ABI version check
+
+commit fe00991326bbf6f0944543fda3856bedaa916a09
+Author: Dave Airlie <airlied@redhat.com>
+Date:   Tue Jul 28 13:32:29 2009 +1000
+
+    fbdev: update for resources/RAC API removal
+
+commit 16ea2bb46c9acc881f66a1f498d63586071aa9b7
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Thu May 28 14:55:08 2009 -0400
+
+    Remove useless loader symbol lists.
+
+commit c3434c86252428a93861daa8ba1161391576cd88
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Wed Mar 4 10:09:47 2009 -0500
+
+    Allow building against a non-DGA server.
+
+commit db33e337a867c5be8f21c7ebf6fdafaa00d02abc
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Fri Jan 30 20:38:47 2009 -0800
+
+    Add README with pointers to mailing list, bugzilla & git repos
+
+commit f9b88908fc94d03d91d948a67c0dc87d30f2a6a9
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Fri Jan 9 16:27:44 2009 -0800
+
+    Remove xorgconfig & xorgcfg from See Also list in man page
+
+commit 092f0f10cb243ef011a38a92e4eb48d424de80fa
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Sun Nov 23 20:04:30 2008 -0500
+
+    Make ISA optional
+
+commit 73ff2d0cd72a165ecfb30b1620bda3b445d04409
+Author: Adam Jackson <ajax@redhat.com>
+Date:   Wed Mar 19 13:51:44 2008 -0400
+
+    fbdev 0.4.0
+
+commit 6bae3476b01620372b77579bc4cbef99eda734c6
+Author: Matthias Hopf <mhopf@suse.de>
+Date:   Fri Oct 12 15:58:34 2007 +0200
+
+    Fixed leftover PCIACCESS -> XSERVER_LIBPCIACCESS.
+
+commit a9a7763ce04b4b4e1529f1aa74bb5081dc562ea7
+Author: Brice Goglin <bgoglin@debian.org>
+Date:   Wed Sep 12 01:49:33 2007 +0200
+
+    Replace a non-ascii char with the corresponding groff escape in fbdev.man
+
+commit 31707aeccd805fb530872e4b088189665c970076
+Author: Ian Romanick <idr@us.ibm.com>
+Date:   Mon Jan 22 08:52:43 2007 -0800
+
+    Add conditional support for pci-rework branch.
+    
+    To build VESA driver for use with pci-rework Xserver, add --enable-pciacces
+    to the configure command line.  Otherwise, the "traditional" VESA driver will
+    be built.
+
+commit b17f9256d5958fdd45dd5fe0ce10663ef9634900
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Sun Dec 31 17:43:52 2006 +0100
+
+    Only determine pitch after setting initial mode.
+    
+    We were determining it from the mode which is current at X server startup,
+    which may have a completely different pitch.
+
+commit 436a2c094aecb661e183e3ca247765a0fe1fa4bc
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Fri Dec 29 12:57:44 2006 +0100
+
+    Bump to 0.3.1 for release.
+
+commit 5b54cbd70e12b10f7d8b76d0bfdda2d8bc2cb969
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Fri Dec 29 12:57:23 2006 +0100
+
+    Use package version definitions from XORG_RELEASE_VERSION macros.
+
+commit b6fd3708242b492acdaa125099b4e29837596605
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Fri Dec 29 12:29:31 2006 +0100
+
+    Don't prefer 24bpp for depth 24.
+
+commit 43236f5bfc33f4757dbc5ed9d5682a73c06d8b87
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Wed Dec 27 13:05:12 2006 +0100
+
+    Fix shadow framebuffer, and by extension rotation.
+    
+    Based on Adam Jackson's shadow framebuffer fixes in xf86-video-vesa.
+
+commit 643573a51fbdcaa4ddb8036956a626f3dce13881
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Wed Dec 27 13:03:05 2006 +0100
+
+    Add missing argument to xf86DrvMsg().
+
+commit b5b1b7d7313fdcd8bd37cb53ca654874d4b395fb
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Wed Dec 27 13:01:32 2006 +0100
+
+    Update my e-mail address.
+
+commit abfc75fbcdf021a07f5b9c7ed6189e3b8cb69a7f
+Author: Michel Dänzer <michel@tungstengraphics.com>
+Date:   Wed Dec 27 12:59:42 2006 +0100
+
+    Convert .cvsignore to .gitignore.
+    
+    Add a couple of items while we're at it.
+
+commit a12d1ce572e739cfe164915779adae2cf5191a06
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Wed Nov 8 12:22:53 2006 -0500
+
+    Make debug output a run-time option instead of compile-time.
+
+commit 6ed2e61542ed37be2a5f3e41614a2b94649ea94f
+Author: Jeremy C. Reed <reed@glacier.reedmedia.net>
+Date:   Wed Oct 18 14:56:01 2006 -0500
+
+    Replace stub file with real license.
+    
+    "XFree86 code without an explicit copyright is covered by the
+    following copyright/license" ....
+    
+    Discussed on xorg list.
+
+commit 24177f72188f752c53d3dd772e5b7940a31004ae
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Fri May 19 19:17:46 2006 +0000
+
+    Bump to 0.3.0
+
+commit c7b9e1a3275b98ba74eacb67e7dc86ae502a4a51
+Author: Kevin E Martin <kem@kem.org>
+Date:   Thu May 18 21:15:32 2006 +0000
+
+    Fix ShadowFB support to work with recent miext/shadow changes from bug
+        #5460 (Kevin Martin), and apply fix for miext/shadow crasher
+        https://bugs.freedesktop.org/show_bug.cgi?id=6940 (Kristian Hoegsberg).
+
+commit fe1fa4c016202e7e07f4e3143b6cedb7f9e82f9b
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Fri Apr 7 19:02:07 2006 +0000
+
+    Unlibcwrap. Bump server version requirement. Bump to 0.2.0.
+
+commit 41a763816d9319680f31690baeab66407cd5f41c
+Author: gravity <gravity>
+Date:   Tue Jan 10 03:22:11 2006 +0000
+
+    Convert manpage to utf-8
+
+commit 332464c43f0f73fabbfddadbdb6a1dd0358dcba7
+Author: Kevin E Martin <kem@kem.org>
+Date:   Wed Dec 21 02:30:00 2005 +0000
+
+    Update package version for X11R7 release.
+
+commit cf1b33cb4da017b4c81aa4a4f425e02b6db3275e
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Mon Dec 19 16:25:53 2005 +0000
+
+    Stub COPYING files
+
+commit 35c09ae4c4587c3673f21cc59770ff1d1d386307
+Author: Kevin E Martin <kem@kem.org>
+Date:   Thu Dec 15 00:24:17 2005 +0000
+
+    Update package version number for final X11R7 release candidate.
+
+commit 2e4f3e6a0a92688d3747caa3dd77acb7d656cd7e
+Author: Kevin E Martin <kem@kem.org>
+Date:   Tue Dec 6 22:48:34 2005 +0000
+
+    Change *man_SOURCES ==> *man_PRE to fix autotools warnings.
+
+commit 8521127ff1037f3b93f3fae36a1a195b926e8a8a
+Author: Kevin E Martin <kem@kem.org>
+Date:   Sat Dec 3 05:49:33 2005 +0000
+
+    Update package version number for X11R7 RC3 release.
+
+commit 7a37e5db75e35ab26677a0201362a4a454987ffc
+Author: Kevin E Martin <kem@kem.org>
+Date:   Fri Dec 2 02:16:08 2005 +0000
+
+    Remove extraneous AC_MSG_RESULT.
+
+commit 4635b198fbaec32206c00dd2b1156b8c0e77178e
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Tue Nov 29 23:29:58 2005 +0000
+
+    Only build dlloader modules by default.
+
+commit 91b40b9c63e664c5f6a916400dc7020cd9241ca2
+Author: Alan Coopersmith <Alan.Coopersmith@sun.com>
+Date:   Mon Nov 28 22:04:09 2005 +0000
+
+    Change *mandir targets to use new *_MAN_DIR variables set by xorg-macros.m4
+        update to fix bug #5167 (Linux prefers *.1x man pages in man1 subdir)
+
+commit ff706274279f209d1478f95cf33c24ae19b9eba6
+Author: Eric Anholt <anholt@freebsd.org>
+Date:   Mon Nov 21 10:49:12 2005 +0000
+
+    Add .cvsignores for drivers.
+
+commit d57ddc84c3a0fd25ed385e458ffe920079aa4feb
+Author: Kevin E Martin <kem@kem.org>
+Date:   Wed Nov 9 21:15:15 2005 +0000
+
+    Update package version number for X11R7 RC2 release.
+
+commit 493a1b8b117417df7de647825350a1d44c1d23dd
+Author: Kevin E Martin <kem@kem.org>
+Date:   Tue Nov 1 15:08:52 2005 +0000
+
+    Update pkgcheck depedencies to work with separate build roots.
+
+commit 3f11faf88ce3678cbc9ad305eef17bc922c8f75e
+Author: Kevin E Martin <kem@kem.org>
+Date:   Wed Oct 19 02:48:02 2005 +0000
+
+    Update package version number for RC1 release.
+
+commit e87f2ee9b17e922212ee6b04763418e27b87fbaa
+Author: Alan Coopersmith <Alan.Coopersmith@sun.com>
+Date:   Tue Oct 18 00:01:53 2005 +0000
+
+    Use @DRIVER_MAN_SUFFIX@ instead of $(DRIVER_MAN_SUFFIX) in macro
+        substitutions to work better with BSD make
+
+commit 5f77732d9a6b54c6964718637c9a4304985e5a00
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Mon Oct 17 22:57:33 2005 +0000
+
+    More 1.7 braindamage: define EXTRA_DIST in terms of @DRIVER_NAME@ instead
+        of indirectly
+
+commit 52518e451155e101c1dc24f91a937d15af4d6d2c
+Author: Alan Coopersmith <Alan.Coopersmith@sun.com>
+Date:   Mon Oct 17 00:09:02 2005 +0000
+
+    Use sed & cpp to substitute variables in driver man pages
+
+commit a2a75f4dba11cd6f49be546a38b2aaa189d2813b
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Fri Aug 26 06:32:45 2005 +0000
+
+    Numerous spelling and grammar fixes. (Branden Robinson, Debian #099n)
+
+commit 28171378a17fbae4a95419a2a3f1cee6246a1916
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Thu Aug 18 09:03:46 2005 +0000
+
+    Update autogen.sh to one that does objdir != srcdir.
+
+commit f060ccc1f1544fdcce08ffd495c24c9106bc0ec2
+Author: Kevin E Martin <kem@kem.org>
+Date:   Fri Jul 29 21:22:43 2005 +0000
+
+    Various changes preparing packages for RC0:
+    - Verify and update package version numbers as needed
+    - Implement versioning scheme
+    - Change bug address to point to bugzilla bug entry form
+    - Disable loadable i18n in libX11 by default (use --enable-loadable-i18n to
+        reenable it)
+    - Fix makedepend to use pkgconfig and pass distcheck
+    - Update build script to build macros first
+    - Update modular Xorg version
+
+commit d0517a40a91b6a044e6a87d20ce6007a12c299bb
+Author: Søren Sandmann Pedersen <sandmann@daimi.au.dk>
+Date:   Mon Jul 25 23:50:23 2005 +0000
+
+    Build system for fbdev driver
+
+commit 44d4790006f8f505ccf045161ce82854d921d52f
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Mon Jul 11 02:29:47 2005 +0000
+
+    Prep for modular builds by adding guarded #include "config.h" everywhere.
+
+commit 4d18c5309c49c4fa83fd645f6ed879d2c2cad3a9
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Sat Jun 25 21:16:54 2005 +0000
+
+    Bug #3626: _X_EXPORT tags for video and input drivers.
+
+commit 82ab7895da512d13c9831e9d17e8ee11211db2c0
+Author: Egbert Eich <eich@suse.de>
+Date:   Fri Jan 28 16:12:59 2005 +0000
+
+    Modifying X.Org Xserver DDX to allow to run X with ordinary user
+        permissions when no access to HW registers is required. For API changes
+        which mostly involve the modifications to make the RRFunc (introduced
+        with 6.8) more flexible please check Bugzilla #2407. NOTE: This patch
+        applies changes to OS specific files for other OSes which I cannot
+        test.
+
+commit 077e3dbcf41e25229b2a4949bc6b50adf26b084d
+Author: Markus Kuhn <Markus.Kuhn@cl.cam.ac.uk>
+Date:   Sat Dec 4 00:43:05 2004 +0000
+
+    Encoding of numerous files changed to UTF-8
+
+commit 2327cdd208b07282ec3e339d9edf46092ff1b765
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Mon Aug 16 09:13:13 2004 +0000
+
+    Bug #1087: Make sure all the *Weak symbols are documented in the import
+        list, so the loader knows not to complain about unresolved symbols when
+        an optional module isn't loaded. This typically manifests as warnings
+        about fbdevHW symbols when the user isn't using the framebuffer
+        console.
+
+commit bd1e31bdb5e64c5a533024aea077c417692438e2
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Tue Aug 3 02:44:20 2004 +0000
+
+    Bug #962: Remove LoaderSymbol calls introduced by the dlloader work so
+        DoLoadableServer NO builds work again.
+
+commit 1d3246ca0d6cfd40e39df1715f98a33c24476490
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Sun Aug 1 18:04:07 2004 +0000
+
+    *really* remove the last call to FillInScreenInfo. i clearly haven't had my
+        coffee yet this morning...
+
+commit ce86e2a272005604b3eec732d68b65259ee9e04d
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Sun Aug 1 16:28:57 2004 +0000
+
+    Kill off the last fbdevHWFillInScreenInfo user. Noticed by juergbi on IRC.
+
+commit 4c1492ac6df4296627d7d7d611cd1883965b2cae
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Sat Jul 31 01:21:18 2004 +0000
+
+    Change several LoaderSymbol calls introduced by the bug #400 patch to
+    *Weak() resolver functions.
+
+commit 64ef1f4af16f769de6e0a96b0a4f5014016d82de
+Author: Adam Jackson <ajax@nwnk.net>
+Date:   Fri Jul 30 20:30:52 2004 +0000
+
+    Bug #400 (partial): Driver fixes for the dlloader. When using dlloader, all
+        framebuffer formats except cfb and the overlay modes should work, and
+        r128 and radeon need to be loaded from the ati driver (both issues to
+        be fixed soon). Tested on i740, s3virge, mach64, tdfx, vesa, and vga
+        drivers. elfloader users shouldn't be affected.
+
+commit db6514cea01a43ea7eb37216c921380a1e4bd96f
+Author: Eric Anholt <anholt@freebsd.org>
+Date:   Wed Jun 16 09:23:04 2004 +0000
+
+    DRI XFree86-4_3_99_12-merge import
+
+commit 1e80fe1bf94d36217c89f71b03dd7d22f156bc22
+Author: Egbert Eich <eich@suse.de>
+Date:   Fri Apr 23 19:31:36 2004 +0000
+
+    Merging XORG-CURRENT into trunk
+
+commit 5d8a0a2e47a5b6e304eea259de0b7d50af96c573
+Author: Egbert Eich <eich@suse.de>
+Date:   Sun Mar 14 08:33:20 2004 +0000
+
+    Importing vendor version xf86-4_4_99_1 on Sun Mar 14 00:26:39 PST 2004
+
+commit 69d61895f3208c30c329b64ede25338509d16a7c
+Author: Egbert Eich <eich@suse.de>
+Date:   Wed Mar 3 12:12:18 2004 +0000
+
+    Importing vendor version xf86-4_4_0 on Wed Mar 3 04:09:24 PST 2004
+
+commit 806863c5f6636c958e716a2f853cb06dcd883e64
+Author: Egbert Eich <eich@suse.de>
+Date:   Thu Feb 26 13:35:52 2004 +0000
+
+    readding XFree86's cvs IDs
+
+commit 595a614cd9291eacbed6241320c9e44e4e65204f
+Author: Egbert Eich <eich@suse.de>
+Date:   Thu Feb 26 09:23:18 2004 +0000
+
+    Importing vendor version xf86-4_3_99_903 on Wed Feb 26 01:21:00 PST 2004
+
+commit 62bec818a1995fb4c7ea417625aa4f75ecf0ee20
+Author: Egbert Eich <eich@suse.de>
+Date:   Thu Jan 29 08:08:35 2004 +0000
+
+    Importing vendor version xf86-012804-2330 on Thu Jan 29 00:06:33 PST 2004
+
+commit 48e31aaed2340998e4e3b62aaae41d6fbce0ca88
+Author: Kaleb Keithley <kaleb@freedesktop.org>
+Date:   Tue Nov 25 19:28:36 2003 +0000
+
+    XFree86 4.3.99.16 Bring the tree up to date for the Cygwin folks
+
+commit 3a00d913598207bea3ce36561b160f2d82c0266f
+Author: Kaleb Keithley <kaleb@freedesktop.org>
+Date:   Fri Nov 14 16:48:55 2003 +0000
+
+    XFree86 4.3.0.1
+
+commit 8b7ad1d26cdf2623aeac068aa61bd589cb709ed5
+Author: Kaleb Keithley <kaleb@freedesktop.org>
+Date:   Fri Nov 14 16:48:55 2003 +0000
+
+    Initial revision
