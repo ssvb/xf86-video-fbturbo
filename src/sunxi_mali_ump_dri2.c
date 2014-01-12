@@ -1074,20 +1074,35 @@ static unsigned long ump_get_size_from_secure_id(ump_secure_id secure_id)
     return size;
 }
 
+static const char *driverNames[1] = {
+    "lima" /* DRI2DriverDRI */
+};
+
+static const char *driverNamesWithVDPAU[2] = {
+    "lima", /* DRI2DriverDRI */
+    "sunxi" /* DRI2DriverVDPAU */
+};
+
 SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
                                   Bool      bUseOverlay,
                                   Bool      bSwapbuffersWait)
 {
     int drm_fd;
-    DRI2InfoRec info;
+    DRI2InfoRec info = { 0 };
     SunxiMaliDRI2 *mali;
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     sunxi_disp_t *disp = SUNXI_DISP(pScrn);
+    Bool have_sunxi_cedar = TRUE;
 
     if (!xf86LoadKernelModule("mali"))
         xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali' kernel module\n");
     if (!xf86LoadKernelModule("mali_drm"))
         xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'mali_drm' kernel module\n");
+
+    if (!xf86LoadKernelModule("sunxi_cedar_mod")) {
+        xf86DrvMsg(pScreen->myNum, X_INFO, "can't load 'sunxi_cedar_mod' kernel module\n");
+        have_sunxi_cedar = FALSE;
+    }
 
     if (!xf86LoadSubModule(xf86Screens[pScreen->myNum], "dri2"))
         return NULL;
@@ -1174,9 +1189,18 @@ SunxiMaliDRI2 *SunxiMaliDRI2_Init(ScreenPtr pScreen,
     xf86DrvMsg(pScreen->myNum, X_INFO, "Wait on SwapBuffers? %s\n",
                bSwapbuffersWait ? "enabled" : "disabled");
 
-    info.version = 3;
+    info.version = 4;
 
-    info.driverName = "lima";
+    if (have_sunxi_cedar) {
+        info.numDrivers = ARRAY_SIZE(driverNamesWithVDPAU);
+        info.driverName = driverNamesWithVDPAU[0];
+        info.driverNames = driverNamesWithVDPAU;
+    }
+    else {
+        info.numDrivers = ARRAY_SIZE(driverNames);
+        info.driverName = driverNames[0];
+        info.driverNames = driverNames;
+    }
     info.deviceName = drmGetDeviceNameFromFd(drm_fd);
     info.fd = drm_fd;
 
