@@ -23,7 +23,7 @@
 # Initialize Autoconf
 AC_PREREQ([2.60])
 AC_INIT([xf86-video-fbturbo],
-        [0.4.0],
+        [0.5.1],
         [https://github.com/ssvb/xf86-video-fbturbo],
         [xf86-video-fbturbo])
 AC_CONFIG_SRCDIR([Makefile.am])
