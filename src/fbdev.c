@@ -38,6 +38,9 @@
 #include <pciaccess.h>
 #endif
 
+/* for xf86{Depth,FbBpp}. i am a terrible person, and i am sorry. */
+#include "xf86Priv.h"
+
 static Bool debug = 0;
 
 #define TRACE_ENTER(str) \
@@ -427,6 +430,29 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"fbdev")))
 		return FALSE;
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
+
+	if (default_depth == 8) do {
+	    /* trust the command line */
+	    if (xf86FbBpp > 0 || xf86Depth > 0)
+		break;
+
+	    /* trust the config file's Screen stanza */
+	    if (pScrn->confScreen->defaultfbbpp > 0 ||
+		pScrn->confScreen->defaultdepth > 0)
+		break;
+
+	    /* trust our Device stanza in the config file */
+	    if (xf86FindOption(fPtr->pEnt->device->options, "DefaultDepth") ||
+		xf86FindOption(fPtr->pEnt->device->options, "DefaultFbBpp"))
+		break;
+
+	    /* otherwise, lol no */
+	    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		       "Console is 8bpp, defaulting to 32bpp\n");
+	    default_depth = 24;
+	    fbbpp = 32;
+	} while (0);
+
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
 			     Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
