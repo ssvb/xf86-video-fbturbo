@@ -1056,7 +1056,8 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 #endif
 
-	if (!xf86ReturnOptValBool(fPtr->Options, OPTION_SW_CURSOR, FALSE) &&
+	if (fPtr->rotate == FBDEV_ROTATE_NONE &&
+	    !xf86ReturnOptValBool(fPtr->Options, OPTION_SW_CURSOR, FALSE) &&
 	     xf86ReturnOptValBool(fPtr->Options, OPTION_HW_CURSOR, TRUE)) {
 
 	    fPtr->SunxiDispHardwareCursor_private = SunxiDispHardwareCursor_Init(
