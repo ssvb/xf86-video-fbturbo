@@ -36,6 +36,29 @@
 
 /*****************************************************************************/
 
+static int sunxi_gfx_layer_change_work_mode(sunxi_disp_t *ctx, int new_mode)
+{
+    __disp_layer_info_t layer_info;
+    uint32_t tmp[4];
+
+    if (ctx->layer_id < 0)
+        return -1;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    tmp[2] = (uintptr_t)&layer_info;
+    if (ioctl(ctx->fd_disp, DISP_CMD_LAYER_GET_PARA, tmp) < 0)
+        return -1;
+
+    layer_info.mode = new_mode;
+
+    tmp[0] = ctx->fb_id;
+    tmp[1] = ctx->gfx_layer_id;
+    tmp[2] = (uintptr_t)&layer_info;
+    return ioctl(ctx->fd_disp, DISP_CMD_LAYER_SET_PARA, tmp);
+}
+
+
 sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
 {
     sunxi_disp_t *ctx = calloc(sizeof(sunxi_disp_t), 1);
@@ -145,6 +168,9 @@ sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
         free(ctx);
         return NULL;
     }
+
+    /* Try to enable scaler for the screen layer */
+    sunxi_gfx_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER);
 
     if (sunxi_layer_reserve(ctx) < 0)
     {
@@ -296,7 +322,7 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
     /* try to allocate a layer */
 
     tmp[0] = ctx->fb_id;
-    tmp[1] = DISP_LAYER_WORK_MODE_NORMAL;
+    tmp[1] = DISP_LAYER_WORK_MODE_SCALER;
     ctx->layer_id = ioctl(ctx->fd_disp, DISP_CMD_LAYER_REQUEST, &tmp);
     if (ctx->layer_id < 0)
         return -1;
@@ -332,7 +358,7 @@ int sunxi_layer_reserve(sunxi_disp_t *ctx)
         ctx->layer_has_scaler = 1;
 
     /* Revert back to normal mode */
-    sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL);
+    sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER);
     ctx->layer_scaler_is_enabled = 0;
     ctx->layer_format = DISP_FORMAT_ARGB8888;
 
@@ -373,7 +399,7 @@ int sunxi_layer_set_rgb_input_buffer(sunxi_disp_t *ctx,
         return -1;
 
     if (ctx->layer_scaler_is_enabled) {
-        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL) == 0)
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER) == 0)
             ctx->layer_scaler_is_enabled = 0;
         else
             return -1;
@@ -559,7 +585,7 @@ int sunxi_layer_hide(sunxi_disp_t *ctx)
 
     /* If the layer is hidden, there is no need to keep the scaler occupied */
     if (ctx->layer_scaler_is_enabled) {
-        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_NORMAL) == 0)
+        if (sunxi_layer_change_work_mode(ctx, DISP_LAYER_WORK_MODE_SCALER) == 0)
             ctx->layer_scaler_is_enabled = 0;
     }
 
