@@ -233,6 +233,35 @@ FBDevIdentify(int flags)
 	xf86PrintChipsets(FBDEV_NAME, "driver for framebuffer", FBDevChipsets);
 }
 
+static Bool
+fbdevSwitchMode(ScrnInfoPtr pScrn, DisplayModePtr mode)
+{
+    return fbdevHWSwitchMode(pScrn, mode);
+}
+
+static void
+fbdevAdjustFrame(ScrnInfoPtr pScrn, int x, int y)
+{
+    fbdevHWAdjustFrame(pScrn, x, y);
+}
+
+static Bool
+fbdevEnterVT(ScrnInfoPtr pScrn)
+{
+    return fbdevHWEnterVT(pScrn);
+}
+
+static void
+fbdevLeaveVT(ScrnInfoPtr pScrn)
+{
+    fbdevHWLeaveVT(pScrn);
+}
+
+static ModeStatus
+fbdevValidMode(ScrnInfoPtr pScrn, DisplayModePtr mode, Bool verbose, int flags)
+{
+    return fbdevHWValidMode(pScrn, mode, verbose, flags);
+}
 
 #ifdef XSERVER_LIBPCIACCESS
 static Bool FBDevPciProbe(DriverPtr drv, int entity_num,
@@ -258,11 +287,11 @@ static Bool FBDevPciProbe(DriverPtr drv, int entity_num,
 	    pScrn->Probe         = FBDevProbe;
 	    pScrn->PreInit       = FBDevPreInit;
 	    pScrn->ScreenInit    = FBDevScreenInit;
-	    pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
-	    pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
-	    pScrn->EnterVT       = fbdevHWEnterVTWeak();
-	    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
-	    pScrn->ValidMode     = fbdevHWValidModeWeak();
+	    pScrn->SwitchMode    = fbdevSwitchMode;
+	    pScrn->AdjustFrame   = fbdevAdjustFrame;
+	    pScrn->EnterVT       = fbdevEnterVT;
+	    pScrn->LeaveVT       = fbdevLeaveVT;
+	    pScrn->ValidMode     = fbdevValidMode;
 
 	    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
 		       "claimed PCI slot %d@%d:%d:%d\n", 
@@ -375,11 +404,11 @@ FBDevProbe(DriverPtr drv, int flags)
 		    pScrn->Probe         = FBDevProbe;
 		    pScrn->PreInit       = FBDevPreInit;
 		    pScrn->ScreenInit    = FBDevScreenInit;
-		    pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
-		    pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
-		    pScrn->EnterVT       = fbdevHWEnterVTWeak();
-		    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
-		    pScrn->ValidMode     = fbdevHWValidModeWeak();
+		    pScrn->SwitchMode    = fbdevSwitchMode;
+		    pScrn->AdjustFrame   = fbdevAdjustFrame;
+		    pScrn->EnterVT       = fbdevEnterVT;
+		    pScrn->LeaveVT       = fbdevLeaveVT;
+		    pScrn->ValidMode     = fbdevValidMode;
 		    
 		    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			       "using %s\n", dev ? dev : "default device");
@@ -632,6 +661,17 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	return TRUE;
 }
 
+static void
+fbdevUpdateRotatePacked(ScreenPtr pScreen, shadowBufPtr pBuf)
+{
+    shadowUpdateRotatePacked(pScreen, pBuf);
+}
+
+static void
+fbdevUpdatePacked(ScreenPtr pScreen, shadowBufPtr pBuf)
+{
+    shadowUpdatePacked(pScreen, pBuf);
+}
 
 static Bool
 FBDevCreateScreenResources(ScreenPtr pScreen)
@@ -651,7 +691,7 @@ FBDevCreateScreenResources(ScreenPtr pScreen)
     pPixmap = pScreen->GetScreenPixmap(pScreen);
 
     if (!shadowAdd(pScreen, pPixmap, fPtr->rotate ?
-		   shadowUpdateRotatePackedWeak() : shadowUpdatePackedWeak(),
+		   fbdevUpdateRotatePacked : fbdevUpdatePacked,
 		   FBDevWindowLinear, fPtr->rotate, NULL)) {
 	return FALSE;
     }
@@ -675,6 +715,23 @@ FBDevShadowInit(ScreenPtr pScreen)
     return TRUE;
 }
 
+static void
+fbdevLoadPalette(ScrnInfoPtr pScrn, int num, int *i, LOCO *col, VisualPtr pVis)
+{
+    fbdevHWLoadPalette(pScrn, num, i, col, pVis);
+}
+
+static void
+fbdevDPMSSet(ScrnInfoPtr pScrn, int mode, int flags)
+{
+    fbdevHWDPMSSet(pScrn, mode, flags);
+}
+
+static Bool
+fbdevSaveScreen(ScreenPtr pScreen, int mode)
+{
+    return fbdevHWSaveScreen(pScreen, mode);
+}
 
 static Bool
 FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
@@ -909,13 +966,12 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 		return FALSE;
 	}
 	flags = CMAP_PALETTED_TRUECOLOR;
-	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevHWLoadPaletteWeak(), 
-				NULL, flags))
+	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevLoadPalette, NULL, flags))
 		return FALSE;
 
-	xf86DPMSInit(pScreen, fbdevHWDPMSSetWeak(), 0);
+	xf86DPMSInit(pScreen, fbdevDPMSSet, 0);
 
-	pScreen->SaveScreen = fbdevHWSaveScreenWeak();
+	pScreen->SaveScreen = fbdevSaveScreen;
 
 	/* Wrap the current CloseScreen function */
 	fPtr->CloseScreen = pScreen->CloseScreen;
