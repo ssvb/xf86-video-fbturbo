@@ -280,7 +280,7 @@ static Bool FBDevPciProbe(DriverPtr drv, int entity_num,
 						  pScrn->entityInstanceList[0]);
 
 	device = xf86FindOptionValue(devSection->options, "fbdev");
-	if (fbdevHWProbe(NULL, device, NULL)) {
+	if (fbdevHWProbe(dev, device, NULL)) {
 	    pScrn->driverVersion = FBDEV_VERSION;
 	    pScrn->driverName    = FBDEV_DRIVER_NAME;
 	    pScrn->name          = FBDEV_NAME;
@@ -427,6 +427,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	int default_depth, fbbpp;
 	const char *s;
 	int type;
+	void *pci_dev;
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -454,9 +455,14 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 		   "xf86RegisterResources() found resource conflicts\n");
 		return FALSE;
 	}
+#else
+	if (fPtr->pEnt->location.type == BUS_PCI)
+	    pci_dev = fPtr->pEnt->location.id.pci;
 #endif
 	/* open device */
-	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"fbdev")))
+	if (!fbdevHWInit(pScrn, pci_dev,
+			 xf86FindOptionValue(fPtr->pEnt->device->options,
+					     "fbdev")))
 		return FALSE;
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
 
