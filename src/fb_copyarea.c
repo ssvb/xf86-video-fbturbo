@@ -38,6 +38,11 @@
  * defined in "linux/fb.h" header
  */
 #define FBIOCOPYAREA		_IOW('z', 0x21, struct fb_copyarea)
+/*
+ * HACK: another non-standard ioctl, which is used to check whether the
+ * fbdev kernel driver actually returns errors on unsupported ioctls.
+ */
+#define FBUNSUPPORTED		_IOW('z', 0x22, struct fb_copyarea)
 
 /* Fallback to CPU when handling less than COPYAREA_BLT_SIZE_THRESHOLD pixels */
 #define COPYAREA_BLT_SIZE_THRESHOLD 90
@@ -59,6 +64,16 @@ fb_copyarea_t *fb_copyarea_init(const char *device, void *xserver_fbmem)
 
     ctx->fd = open(device, O_RDWR);
     if (ctx->fd < 0) {
+        close(ctx->fd);
+        free(ctx);
+        return NULL;
+    }
+
+    /*
+     * Check if the unsupported dummy ioctl fails. If it does not, then the
+     * kernel framebuffer driver is buggy and does not handle errors correctly.
+     */
+    if (ioctl(ctx->fd, FBUNSUPPORTED, &copyarea) == 0) {
         close(ctx->fd);
         free(ctx);
         return NULL;
