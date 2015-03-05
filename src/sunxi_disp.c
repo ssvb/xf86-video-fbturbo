@@ -140,10 +140,16 @@ sunxi_disp_t *sunxi_disp_init(const char *device, void *xserver_fbmem)
               ctx->fb_id == 0 ? FBIOGET_LAYER_HDL_0 : FBIOGET_LAYER_HDL_1,
               &ctx->gfx_layer_id))
     {
-        close(ctx->fd_fb);
-        close(ctx->fd_disp);
-        free(ctx);
-        return NULL;
+        /* Some boards use an inverted screen layer configuration */
+        if (ioctl(ctx->fd_fb,
+                  ctx->fb_id == 0 ? FBIOGET_LAYER_HDL_1 : FBIOGET_LAYER_HDL_0,
+                  &ctx->gfx_layer_id))
+        {
+            close(ctx->fd_fb);
+            close(ctx->fd_disp);
+            free(ctx);
+            return NULL;
+        }
     }
 
     if (sunxi_layer_reserve(ctx) < 0)
