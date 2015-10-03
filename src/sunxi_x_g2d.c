@@ -31,7 +31,6 @@
 #include "xf86_OSproc.h"
 #include "xf86.h"
 #include "xf86drm.h"
-#include "dri2.h"
 #include "damage.h"
 #include "fb.h"
 #include "gcstruct.h"
