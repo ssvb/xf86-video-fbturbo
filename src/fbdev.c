@@ -427,7 +427,7 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	int default_depth, fbbpp;
 	const char *s;
 	int type;
-	void *pci_dev;
+	void *pci_dev = NULL;
 
 	if (flags & PROBE_DETECT) return FALSE;
 
