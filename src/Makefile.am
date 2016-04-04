@@ -32,6 +32,7 @@ fbturbo_drv_la_SOURCES = \
          compat-api.h \
          uthash.h \
          arm_asm.S \
+         aarch64_asm.S \
          cpuinfo.c \
          cpuinfo.h \
          cpu_backend.c \

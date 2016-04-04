@@ -884,7 +884,7 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	 */
 	useBackingStore = xf86ReturnOptValBool(fPtr->Options, OPTION_USE_BS,
 	                                       !fPtr->shadowFB);
-#ifndef __arm__
+#if !(defined(__arm__) || defined(__aarch64__))
 	/*
 	 * right now we can only make "smart" decisions on ARM hardware,
 	 * everything else (for example x86) would take a performance hit

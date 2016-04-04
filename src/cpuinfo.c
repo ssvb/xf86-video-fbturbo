@@ -93,8 +93,10 @@ static int parse_proc_cpuinfo(cpuinfo_t *cpuinfo)
         }
         if ((val = cpuinfo_match_prefix(buffer, "Features"))) {
             cpuinfo->has_arm_edsp = find_feature(val, "edsp");
-            cpuinfo->has_arm_vfp  = find_feature(val, "vfp");
-            cpuinfo->has_arm_neon = find_feature(val, "neon");
+            cpuinfo->has_arm_vfp  = find_feature(val, "vfp") ||
+                                    find_feature(val, "fp");
+            cpuinfo->has_arm_neon = find_feature(val, "neon") ||
+                                    find_feature(val, "asimd");
             cpuinfo->has_arm_wmmx = find_feature(val, "iwmmxt");
         }
         else if ((val = cpuinfo_match_prefix(buffer, "CPU implementer"))) {
@@ -105,7 +107,9 @@ static int parse_proc_cpuinfo(cpuinfo_t *cpuinfo)
             }
         }
         else if ((val = cpuinfo_match_prefix(buffer, "CPU architecture"))) {
-            if (sscanf(val, "%i", &cpuinfo->arm_architecture) != 1) {
+            if (strncmp(val, "AArch64", 7) == 0) {
+                cpuinfo->arm_architecture = 8;
+            } else if (sscanf(val, "%i", &cpuinfo->arm_architecture) != 1) {
                 fclose(fd);
                 free(buffer);
                 return 0;
@@ -158,7 +162,9 @@ cpuinfo_t *cpuinfo_init()
         return cpuinfo;
     }
 
-    if (cpuinfo->arm_implementer == 0x41 && cpuinfo->arm_part == 0xC0F) {
+    if (cpuinfo->arm_implementer == 0x41 && cpuinfo->arm_part == 0xD03) {
+        cpuinfo->processor_name = strdup("ARM Cortex-A53");
+    } else if (cpuinfo->arm_implementer == 0x41 && cpuinfo->arm_part == 0xC0F) {
         cpuinfo->processor_name = strdup("ARM Cortex-A15");
     } else if (cpuinfo->arm_implementer == 0x41 && cpuinfo->arm_part == 0xC09) {
         if (cpuinfo->has_arm_neon)

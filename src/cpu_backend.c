@@ -27,7 +27,7 @@
 #include "cpuinfo.h"
 #include "cpu_backend.h"
 
-#ifdef __arm__
+#if defined(__arm__) || defined(__aarch64__)
 
 #ifdef __GNUC__
 #define always_inline inline __attribute__((always_inline))
@@ -46,6 +46,16 @@ writeback_scratch_to_mem_arm(int size, void *dst, const void *src)
 {
     memcpy_armv5te(dst, src, size);
 }
+
+#ifdef __aarch64__
+static always_inline void
+writeback_scratch_to_mem_memcpy(int size, void *dst, const void *src)
+{
+    memcpy(dst, src, size);
+}
+
+#define writeback_scratch_to_mem_neon writeback_scratch_to_mem_memcpy
+#endif
 
 #define SCRATCHSIZE 2048
 
@@ -114,6 +124,8 @@ twopass_memmove_neon(void *dst, const void *src, size_t size)
                     writeback_scratch_to_mem_neon);
 }
 
+#ifdef __arm__
+
 static void
 twopass_memmove_vfp(void *dst, const void *src, size_t size)
 {
@@ -129,6 +141,8 @@ twopass_memmove_arm(void *dst, const void *src, size_t size)
                     aligned_fetch_fbmem_to_scratch_arm,
                     writeback_scratch_to_mem_arm);
 }
+
+#endif
 
 static void
 twopass_blt_8bpp(int        width,
@@ -226,6 +240,8 @@ overlapped_blt_neon(void     *self,
                           twopass_memmove_neon);
 }
 
+#ifdef __arm__
+
 static int
 overlapped_blt_vfp(void     *self,
                    uint32_t *src_bits,
@@ -267,6 +283,8 @@ overlapped_blt_arm(void     *self,
                           width, height,
                           twopass_memmove_arm);
 }
+
+#endif
 
 #endif
 
@@ -320,6 +338,10 @@ cpu_backend_t *cpu_backend_init(uint8_t *uncached_buffer,
         /* VFP works better on Cortex-A9, Cortex-A15 and maybe everything else */
         ctx->blt2d.overlapped_blt = overlapped_blt_vfp;
     }
+#endif
+
+#ifdef __aarch64__
+    ctx->blt2d.overlapped_blt = overlapped_blt_neon;
 #endif
 
     return ctx;
