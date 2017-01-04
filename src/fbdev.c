@@ -827,8 +827,8 @@ FBDevScreenInit(SCREEN_INIT_ARGS_DECL)
 	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
 
 	if (fPtr->shadowFB) {
-	    fPtr->shadow = calloc(1, pScrn->virtualX * pScrn->virtualY *
-				  pScrn->bitsPerPixel);
+	    fPtr->shadow = calloc(1, pScrn->displayWidth * pScrn->virtualY *
+				  ((pScrn->bitsPerPixel + 7) / 8));
 
 	    if (!fPtr->shadow) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
