@@ -76,12 +76,6 @@ enum { FBDEV_ROTATE_NONE=0, FBDEV_ROTATE_CW=270, FBDEV_ROTATE_UD=180, FBDEV_ROTA
 
 /* -------------------------------------------------------------------- */
 
-/*
- * This is intentionally screen-independent.  It indicates the binding
- * choice made in the first PreInit.
- */
-static int pix24bpp = 0;
-
 #define FBDEV_VERSION		4000
 #define FBDEV_NAME		"FBDEV"
 #define FBDEV_DRIVER_NAME	"fbdev"
@@ -492,10 +486,6 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 			     Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
 	xf86PrintDepthBpp(pScrn);
-
-	/* Get the depth24 pixmap format */
-	if (pScrn->depth == 24 && pix24bpp == 0)
-		pix24bpp = xf86GetBppFromDepth(pScrn, 24);
 
 	/* color weight */
 	if (pScrn->depth > 8) {
