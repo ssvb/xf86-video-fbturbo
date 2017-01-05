@@ -47,12 +47,14 @@ are supported:
 The framebuffer device to use. Default: /dev/fb0.
 .TP
 .BI "Option \*qShadowFB\*q \*q" boolean \*q
-Enable or disable use of the shadow framebuffer layer.  Default: on.
+Enable or disable use of the shadow framebuffer layer. Mandatory for 24bpp
+framebuffers on newer servers. Default: on.
 .TP
 .BI "Option \*qRotate\*q \*q" string \*q
 Enable rotation of the display. The supported values are "CW" (clockwise,
 90 degrees), "UD" (upside down, 180 degrees) and "CCW" (counter clockwise,
-270 degrees). Implies use of the shadow framebuffer layer.   Default: off.
+270 degrees). Implies use of the shadow framebuffer layer. Disabled for 24bpp
+framebuffers. Default: off.
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__),
 X(__miscmansuffix__), fbdevhw(__drivermansuffix__)

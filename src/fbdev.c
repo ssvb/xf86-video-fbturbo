@@ -41,6 +41,10 @@
 /* for xf86{Depth,FbBpp}. i am a terrible person, and i am sorry. */
 #include "xf86Priv.h"
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 23
+#define HAVE_SHADOW_3224
+#endif
+
 static Bool debug = 0;
 
 #define TRACE_ENTER(str) \
@@ -181,6 +185,7 @@ typedef struct {
 	int				lineLength;
 	int				rotate;
 	Bool				shadowFB;
+        Bool                            shadow24;
 	void				*shadow;
 	CloseScreenProcPtr		CloseScreen;
 	CreateScreenResourcesProcPtr	CreateScreenResources;
@@ -482,6 +487,15 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 	    fbbpp = 32;
 	} while (0);
 
+        fPtr->shadow24 = FALSE;
+#if HAVE_SHADOW_3224
+        /* okay but 24bpp is awful */
+        if (fbbpp == 24) {
+            fPtr->shadow24 = TRUE;
+            fbbpp = 32;
+        }
+#endif
+
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
 			     Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
@@ -531,12 +545,18 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 
 	/* use shadow framebuffer by default */
 	fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options, OPTION_SHADOW_FB, TRUE);
+        if (!fPtr->shadowFB && fPtr->shadow24) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                       "24bpp requires shadow framebuffer, forcing\n");
+            fPtr->shadowFB = TRUE;
+        }
 
 	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
 
 	/* rotation */
 	fPtr->rotate = FBDEV_ROTATE_NONE;
-	if ((s = xf86GetOptValString(fPtr->Options, OPTION_ROTATE)))
+	s = xf86GetOptValString(fPtr->Options, OPTION_ROTATE);
+	if (s && !fPtr->shadow24)
 	{
 	  if(!xf86NameCmp(s, "CW"))
 	  {
@@ -658,6 +678,14 @@ FBDevPreInit(ScrnInfoPtr pScrn, int flags)
 }
 
 static void
+fbdevUpdate32to24(ScreenPtr pScreen, shadowBufPtr pBuf)
+{
+#ifdef HAVE_SHADOW_3224
+    shadowUpdate32to24(pScreen, pBuf);
+#endif
+}
+
+static void
 fbdevUpdateRotatePacked(ScreenPtr pScreen, shadowBufPtr pBuf)
 {
     shadowUpdateRotatePacked(pScreen, pBuf);
@@ -676,6 +704,7 @@ FBDevCreateScreenResources(ScreenPtr pScreen)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     FBDevPtr fPtr = FBDEVPTR(pScrn);
     Bool ret;
+    void (*update)(ScreenPtr, shadowBufPtr);
 
     pScreen->CreateScreenResources = fPtr->CreateScreenResources;
     ret = pScreen->CreateScreenResources(pScreen);
@@ -686,9 +715,15 @@ FBDevCreateScreenResources(ScreenPtr pScreen)
 
     pPixmap = pScreen->GetScreenPixmap(pScreen);
 
-    if (!shadowAdd(pScreen, pPixmap, fPtr->rotate ?
-		   fbdevUpdateRotatePacked : fbdevUpdatePacked,
-		   FBDevWindowLinear, fPtr->rotate, NULL)) {
+    if (fPtr->shadow24)
+        update = fbdevUpdate32to24;
+    else if (fPtr->rotate)
+        update = fbdevUpdateRotatePacked;
+    else
+        update = fbdevUpdatePacked;
+
+    if (!shadowAdd(pScreen, pPixmap, update, FBDevWindowLinear, fPtr->rotate,
+                   NULL)) {
 	return FALSE;
     }
 
