@@ -9,7 +9,7 @@ env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "xXRJHYxZnMEYmKIA/qQW7cGjBy5x6GkWKlWG+2fsOrg+vEwub7XT6wFXNHbwmOSS5jxBlZ/SbeHJP2WECr5yLoEAWrk2KTRQDo17psOadCssDFtZZ4nURG5p1MPur+6j2mxhF7cyT+CHzwIYXHCG5nNA9nnX5Gb4P+Op2UfVdaCmlmy4q6+R31cFrTFXutJwtSSQGZw19lk0AGVlJ1MWmwQMoQuHHsD/25cw1jmBhtMN8I0ycTRKXDWsXtoJkqzT9d6eOj5LuQggwfwcpuH8lgXoFT741w5nGm+nyKfeh4jl9DbH3dEK3rL0tSL/A1ZqwZ0//gw4uw/DrS6FKd7sDcpR8hWY5SPaxD/pq4x+JS4yKxX6Y28XDXXcYUptWx9Fsb8kvUnz/zdsKjJap72JuStQlYGYZ2O+pt61PWh1eiawO/lprraEgSPvbUtjg96Gfwb4Jct16z7kzCsv2jh3YGLKHGPQG/8b/zsoZJ7AUhff+REVToVs1h/Tp2EY/82x9/IQ/439RAZdVmZj3oKhtWNLg7iGiO9g/uDpFHv2QO44dLLcjVB8G9jKJiRmLMxLw9JrPWUydfDD5I2hDYirg02vqRJe7j6yGwj/Cha1Aix2JRIvNf5eMZLF5NJWqF+aAGhq12JghVDxHmGABUhnERz3bA43+NZisYFYjIXJx8c="
+   - secure: "MAz1dxuR0WTf0yP9jZLOha9HzVczxEG/1RjOfm+hfWGdgt4byCWMe/Te8yJMXUohtJdyFViw9VT428g38bxAIWyLlLSKme99fN6qXmyOJVeKT/3fwCS88h/b0ww3YzL2PAfvWByX64ZP5UFAz/fzLoKlVl5k49zEhhJ9TFQipV3PR5tszKzYY3jowmCT6gppFJgTtdYYzDlUlXXix9ASgnbfb5yCEr6GG9jGMOcD+uJDuTqn11h1Wi71Efj6jw9cVCuoyicmgjITyOhs64r9hbzAMIig1jUiOYfItWTAEur4LkjnnQht7rycB8dgbGfZsUhEDSub1N0Ab2O+omPZ+OO8uoLHsFJxmS60GPW6LKL6QfImy5Yi1kKGi3fEBvi2ZXL4/17T5AWQ2Mf6Jsb99x6ClZOpH3DjpoO1BCimvbpLyO8RcOO6R0dCe3Iehsfde5MQv/+XyfQZLklAz9hPL8CRQJ4jbyiC0WKMdM//QUXvdG5fwcqie0BipyRMa1quUsAAma8lbfvxXWrjKOjsfVN7FEDCXL1Y5McZl6UgTSxUHP8DWtbAAoP3FBFk6dqNOmwA4Yaqeh7lwc+m+OURY3SGblUDa/2B2zqtb0yUIptfJMQde/md5EFnj7qH5om3A29vTsjN5Aw8D0n2An793SHd2tfAjb8OesRkFOqwkMI="
 
 before_install:
       - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
@@ -20,7 +20,7 @@ addons:
       name: "ssvb/xf86-video-fbturbo"
       description: "Build submitted via Travis CI"
     notification_email: siarhei.siamashka@gmail.com
-    build_command_prepend: "git clone https://github.com/linux-sunxi/libump.git && cd libump && autoreconf -i && ./configure --prefix=/usr && make && sudo make install && cd .. && autoreconf -vi && ./configure && make clean"
+    build_command_prepend: "rm -rf libump && git clone https://github.com/linux-sunxi/libump.git && cd libump && autoreconf -i && ./configure --prefix=/usr && make && sudo make install && cd .. && autoreconf -vi && ./configure && make clean"
     build_command:   "make -j 4"
     branch_pattern: coverity_scan
   apt:
