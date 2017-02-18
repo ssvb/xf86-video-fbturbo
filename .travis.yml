@@ -17,3 +17,22 @@ addons:
       - libdrm-dev
 
 script: autoreconf -vi && ./configure && make
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "ukLRgEtvpagZy3Gjv8gvXy0b1yuAecAKStkgO8T+/yWKUU9F+WY0H3nDFZ2PPxV7h9PAfXThEGLGXgg94TXPJXhPJHwxO/5CkUE9Ljv2MIc5xWTPChB1L6l9ilV34pNokIvQMSvZGUXBENZXsAWosSOTfpsEl95UN5/RZ9rR9TrneU0VBZAQ2EtbV83t28hQGwj6lC7kS3CjI6UYaFyHmrltFnDw2geR7ymTdvVYzMpqnd/3oQTOddixB6R4OoHwE4/hLTrHwjX6w5Wducw/1ag4BjoS9Ekh5C2taBLlY0dWr/vem8w80H4nGVAFGbxAhxrmumgAaY/PQwlLTDJ5W4K8+rpNu57UVPJ4uHKiN86pZwV4iEFtcZMiE7HfVLmZ3BA2mawgmRPB6XP09G/UMC9y6FSurgmL8f1hOj2Xc1TAWIJanRy6IP4y7sOEeNnRpSx0CEZaLxSzQpMAcObvHKamCnFov11SjCIN/AI27vPaScryLFnNf7WPf1liKcVmZk8FQ7wQs9eCye3H6J0ITOlnLg5jv/KaGT2qYR9SIDx1mRZcJepWccyiK3mH5WK+Lr7UoSmu35mFSM4dZUVg2NxM7uQnZVLYNmz/jrcVG0KDSf1T1TO6TqZ9IlPg5DVNpiqjdFnb1sBawhlCWPjmHNK2gcXZDqGrLeouJe76fC8="
+
+before_install:
+      - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+
+addons:
+  coverity_scan:
+    project:
+      name: "ssvb/xf86-video-fbturbo"
+      description: "Build submitted via Travis CI"
+    notification_email: siarhei.siamashka@gmail.com
+    build_command_prepend: "autoreconf -vi && ./configure && make clean"
+    build_command:   "make -j 4"
+    branch_pattern: coverity_scan
