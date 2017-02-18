@@ -16,4 +16,9 @@ addons:
       - automake
       - libdrm-dev
 
-script: autoreconf -vi && ./configure && make
+script:
+  - git clone https://github.com/linux-sunxi/libump.git
+  - cd libump
+  - autoreconf -i && ./configure --prefix=/usr && make && make install
+  - cd ..
+  - autoreconf -vi && ./configure && make
