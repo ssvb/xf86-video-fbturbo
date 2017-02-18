@@ -1,7 +1,7 @@
 language: c
+sudo: required
 
 compiler:
-  - clang
   - gcc
 
 addons:
@@ -19,6 +19,6 @@ addons:
 script:
   - git clone https://github.com/linux-sunxi/libump.git
   - cd libump
-  - autoreconf -i && ./configure --prefix=/usr && make && make install
+  - autoreconf -i && ./configure --prefix=/usr && make && sudo make install
   - cd ..
   - autoreconf -vi && ./configure && make
