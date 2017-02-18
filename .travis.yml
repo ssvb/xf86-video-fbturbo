@@ -1,16 +1,14 @@
 language: c
+compiler: gcc
 
-compiler:
-  - clang
-  - gcc
-
-script: autoreconf -vi && ./configure && make
+script:
+  - git clone https://github.com/linux-sunxi/libump.git && cd libump && autoreconf -i && ./configure --prefix=/usr && make && sudo make install && cd .. && autoreconf -vi && ./configure && make
 
 env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "K79kWmyEF+CRFa7vb/Nq2gNX3VzqUJY45xP3XRPlSm6BtvpHhJLENX5V+nEkFhFgr0taIXG3eyFDW9rh7xFTUdiXLMHI5bJuq1HofRXTHTo5fmEjzpsp7LJyv14Tab4PA0oCH1eTz/qTEunzNIXh1GilTrCcxPIkF6MIq95Hl9lQSYkNPUcomVqcmJejXafHccrAE/IcqaO4BryKXmoT+U07TQOWmEpBY3exNbXfDMoUOQNfQihzgYIjEiFWI2wQ+F2U8YnrfE4N4EuVNbQAwI8MLRixb1dCyBVbgGRewvZB9RWuzSVT6fDcKtcjPsPH4KH8Is8y9joNYrEb7blWS0vulDBIqm4Bs7MSL91V1kxKwIj5tGsa9bVfIgN/0CKGWIgUDLiiQTamSfKfiPbMYPStABHePShRjrfxVfUD8unzyVPf04Y5K+LKPPApaqkPLy3wiVbEVVgXx/5fochOlmxwPtcAfcs0lOSlvV70Go24bS78uCzVCclfbDEAeMvEixdPsP6+fMAC255fC2Kd4SBRLbS9tIIJkeo8MxrP+EW+mAiognHemoml+RWePA0Jd5Oc5xPFPicbS2XFcopKWuuQEDi/08ve9kjts2ImrSlG8yGH+BMOzjyOUEy3h9LEdGmeZJ2AX3Q8UP2Id9qZwmnh/s+n3tKC3sdsjN4ygvI="
+   - secure: "RqvO6HqSO0vpKqcO5YHWm7ds/1bVx6uRaiUhKPJIRQGQ+iCE41n8HWh+2MOsGll0YADgDawfhenBcf1ttC7USybliKnhRBw70+UskIGOpGdx85OB1mQWxgNJC/pH+9Kj84iRnMyjxfm6tDhPwIxLWO1SzzAZz1QHK6wS7tDKBVn9wHwqxbz4L5hhHu+Wc7F3ZwtQbGylHhVSmTm7gPdFlmTFBqwSClpeZM3AaivOEhRiwVJq4gO2o9HWt8L7yIjCbRc5kW8gJkKkC8/iBwp6BYSVgE8JjVN1HbZj5kSvUbBP5LBm5FJR9ros/eXGQ7mhMezfufCted+leL58sBsriW/0a2NvCjuaijALWh15kLGF8NnQZk29cgog1/dr7poXWxY0w4c4qzF3gr+jxJyZiXym2iBgNKPqCvm2Pcmmo3V2iO+5Wxv6u36++/jrwD+XHs2bb7bdhCInbxf1XsDngPEH/3A8+21754dvFuTMQYD73pnA6mE2OET2ZN9/sOWT9eiBxmtRIc6h+Pslr7RYlvO52KFvPAGKHduI4vsh0l684w8nadOSykrEwNtzpA99yeqYfc0veW6CJZE5KlGcEKwVHITAxcToOKQyAVVOkdQichOvM3D8DJmu8EtJ+LrfsMzSQUTqrpZPmtNK2mTj63oNPBIjpKxHHgrSovZPftM="
 
 before_install:
       - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
@@ -21,7 +19,7 @@ addons:
       name: "ssvb/xf86-video-fbturbo"
       description: "Build submitted via Travis CI"
     notification_email: siarhei.siamashka@gmail.com
-    build_command_prepend: "autoreconf -vi && ./configure && make clean"
+    build_command_prepend: "git clone https://github.com/linux-sunxi/libump.git && cd libump && autoreconf -i && ./configure --prefix=/usr && make && sudo make install && cd .. && autoreconf -vi && ./configure && make clean"
     build_command:   "make -j 4"
     branch_pattern: coverity_scan
   apt:
